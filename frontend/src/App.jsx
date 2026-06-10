@@ -42,6 +42,20 @@ function App() {
   // LeetTracker Board State
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // API calling state tracker
+  const [activeRequests, setActiveRequests] = useState(0);
+  const isApiCalling = activeRequests > 0;
+
+  const customFetch = async (url, options) => {
+    setActiveRequests(prev => prev + 1);
+    try {
+      return await fetch(url, options);
+    } finally {
+      setActiveRequests(prev => Math.max(0, prev - 1));
+    }
+  };
+
   const [filters, setFilters] = useState({
     search: '',
     topic: 'all',
@@ -93,7 +107,7 @@ function App() {
 
     try {
       setLoading(true);
-      const response = await fetch(`${baseURL}/api/questions`, {
+      const response = await customFetch(`${baseURL}/api/questions`, {
         headers: {
           'Authorization': `Bearer ${targetToken}`
         }
@@ -134,7 +148,7 @@ function App() {
     setAuthLoading(true);
     try {
       const endpoint = type === 'login' ? 'login' : 'signup';
-      const response = await fetch(`${baseURL}/api/auth/${endpoint}`, {
+      const response = await customFetch(`${baseURL}/api/auth/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -228,7 +242,7 @@ function App() {
     setQuestions(prev => prev.map(item => item.id === id ? { ...item, done: newDoneState } : item));
 
     try {
-      const response = await fetch(`${baseURL}/api/questions/${id}`, {
+      const response = await customFetch(`${baseURL}/api/questions/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -267,7 +281,7 @@ function App() {
     setQuestions(prev => prev.map(item => item.id === id ? { ...item, revisions: newRevisionsVal } : item));
 
     try {
-      const response = await fetch(`${baseURL}/api/questions/${id}`, {
+      const response = await customFetch(`${baseURL}/api/questions/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -306,7 +320,7 @@ function App() {
     };
 
     try {
-      const response = await fetch(`${baseURL}/api/questions`, {
+      const response = await customFetch(`${baseURL}/api/questions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -356,7 +370,7 @@ function App() {
     };
 
     try {
-      const response = await fetch(`${baseURL}/api/questions/${editForm.id}`, {
+      const response = await customFetch(`${baseURL}/api/questions/${editForm.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -382,7 +396,7 @@ function App() {
     if (!window.confirm(`Are you sure you want to delete "${q.name}"?`)) return;
 
     try {
-      const response = await fetch(`${baseURL}/api/questions/${q.id}`, {
+      const response = await customFetch(`${baseURL}/api/questions/${q.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -411,7 +425,7 @@ function App() {
   // Reset progress handler
   const handleResetConfirm = async () => {
     try {
-      const response = await fetch(`${baseURL}/api/questions/reset`, {
+      const response = await customFetch(`${baseURL}/api/questions/reset`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -562,16 +576,16 @@ function App() {
                   </div>
 
                   <span className="username-display">@{username}</span>
-                  <button className="btn-logout" onClick={handleLogout} title="Log out from LeetTracker">
+                  <button className="btn-logout" onClick={handleLogout} title="Log out from LeetTracker" disabled={isApiCalling}>
                     <LogOut size={14} style={{ marginRight: '0.4rem' }} /> Log Out
                   </button>
                 </div>
               ) : (
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button className="btn btn-secondary" onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('login'); }}>
+                  <button className="btn btn-secondary" onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('login'); }} disabled={isApiCalling}>
                     Sign In
                   </button>
-                  <button className="btn btn-primary" onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('signup'); }}>
+                  <button className="btn btn-primary" onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('signup'); }} disabled={isApiCalling}>
                     Register
                   </button>
                 </div>
@@ -579,7 +593,7 @@ function App() {
             </div>
 
             {/* Mobile Toggle Button */}
-            <button className="mobile-menu-toggle" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label="Toggle Menu">
+            <button className="mobile-menu-toggle" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label="Toggle Menu" disabled={isApiCalling}>
               {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
@@ -594,7 +608,7 @@ function App() {
             <div className="logo-group">
               <h1>LeetTracker</h1>
             </div>
-            <button className="btn-close-drawer" onClick={() => setIsMobileMenuOpen(false)} aria-label="Close menu">
+            <button className="btn-close-drawer" onClick={() => setIsMobileMenuOpen(false)} aria-label="Close menu" disabled={isApiCalling}>
               <X size={20} />
             </button>
           </div>
@@ -641,16 +655,16 @@ function App() {
                   </div>
                 </div>
 
-                <button className="btn btn-danger btn-logout-drawer" onClick={handleLogout} style={{ width: '100%', marginTop: '2rem' }}>
+                <button className="btn btn-danger btn-logout-drawer" onClick={handleLogout} style={{ width: '100%', marginTop: '2rem' }} disabled={isApiCalling}>
                   <LogOut size={16} style={{ marginRight: '0.5rem' }} /> Log Out
                 </button>
               </div>
             ) : (
               <div className="drawer-auth-actions">
-                <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('login'); setIsMobileMenuOpen(false); }}>
+                <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('login'); setIsMobileMenuOpen(false); }} disabled={isApiCalling}>
                   Sign In
                 </button>
-                <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('signup'); setIsMobileMenuOpen(false); }}>
+                <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('signup'); setIsMobileMenuOpen(false); }} disabled={isApiCalling}>
                   Register
                 </button>
               </div>
@@ -669,10 +683,10 @@ function App() {
               A premium, high-performance web dashboard built for students and professionals to build custom DSA sheets, track revision progress, and enable lightning-fast lookups.
             </p>
             <div className="landing-actions">
-              <button className="btn btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1rem' }} onClick={() => setCurrentView('signup')}>
+              <button className="btn btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1rem' }} onClick={() => setCurrentView('signup')} disabled={isApiCalling}>
                 Get Started
               </button>
-              <button className="btn btn-secondary" style={{ padding: '1rem 2.5rem', fontSize: '1rem' }} onClick={() => setCurrentView('login')}>
+              <button className="btn btn-secondary" style={{ padding: '1rem 2.5rem', fontSize: '1rem' }} onClick={() => setCurrentView('login')} disabled={isApiCalling}>
                 Sign In to Account
               </button>
             </div>
@@ -753,8 +767,8 @@ function App() {
                 </div>
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem' }} disabled={authLoading}>
-                {authLoading ? (
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem' }} disabled={authLoading || isApiCalling}>
+                {authLoading || isApiCalling ? (
                   <>
                     <Loader2 size={16} className="spinner" /> Authenticating...
                   </>
@@ -857,6 +871,7 @@ function App() {
                     className={`btn-toggle ${viewMode === 'table' ? 'active' : ''}`}
                     onClick={() => { setViewMode('table'); setActiveFolder(null); }}
                     title="List View"
+                    disabled={isApiCalling}
                   >
                     <List size={14} />
                     <span>List</span>
@@ -865,6 +880,7 @@ function App() {
                     className={`btn-toggle ${viewMode === 'folder' ? 'active' : ''}`}
                     onClick={() => { setViewMode('folder'); setActiveFolder(null); }}
                     title="Folder View"
+                    disabled={isApiCalling}
                   >
                     <Folder size={14} />
                     <span>Folders</span>
@@ -917,11 +933,11 @@ function App() {
               </div>
 
               <div className="filter-right-group">
-                <button className="btn btn-primary" onClick={() => setIsAddModalOpen(true)}>
+                <button className="btn btn-primary" onClick={() => setIsAddModalOpen(true)} disabled={isApiCalling}>
                   <PlusCircle className="mini-icon" size={16} /> Add Question
                 </button>
 
-                <button className="btn btn-secondary text-danger-hover" onClick={() => setIsResetModalOpen(true)}>
+                <button className="btn btn-secondary text-danger-hover" onClick={() => setIsResetModalOpen(true)} disabled={isApiCalling}>
                   Reset Progress
                 </button>
               </div>
@@ -987,7 +1003,7 @@ function App() {
               <div>
                 {viewMode === 'folder' && activeFolder && (
                   <div className="folder-detail-header">
-                    <button className="btn btn-secondary btn-back" onClick={() => setActiveFolder(null)}>
+                    <button className="btn btn-secondary btn-back" onClick={() => setActiveFolder(null)} disabled={isApiCalling}>
                       <ArrowLeft size={16} /> Back to Folders
                     </button>
                     <div className="folder-path">
@@ -1005,7 +1021,7 @@ function App() {
                     <p>No questions match your current search or filter criteria in this view.</p>
                     <button className="btn btn-secondary" onClick={() => {
                       setFilters({ search: '', topic: 'all', difficulty: 'all', status: 'all', revisionSort: 'none' });
-                    }} style={{ marginTop: '1rem' }}>
+                    }} style={{ marginTop: '1rem' }} disabled={isApiCalling}>
                       Clear Filters
                     </button>
                   </div>
@@ -1024,7 +1040,7 @@ function App() {
                       {questionsToRender.map((q) => (
                         <div key={q.id} className={`question-row difficulty-${q.difficulty.toLowerCase()} ${q.done ? 'solved' : ''}`}>
                           <div className="col-status">
-                            <button className="btn-done-toggle" onClick={() => toggleQuestionStatus(q.id)}>
+                            <button className="btn-done-toggle" onClick={() => toggleQuestionStatus(q.id)} disabled={isApiCalling}>
                               <Check size={12} strokeWidth={4} />
                             </button>
                           </div>
@@ -1069,7 +1085,7 @@ function App() {
                               <button
                                 className="btn-counter btn-counter-minus"
                                 onClick={() => handleUpdateRevisions(q.id, (q.revisions || 0) - 1)}
-                                disabled={(q.revisions || 0) <= 0}
+                                disabled={((q.revisions || 0) <= 0) || isApiCalling}
                                 title="Decrement revisions"
                               >
                                 -
@@ -1079,6 +1095,7 @@ function App() {
                                 className="btn-counter btn-counter-plus"
                                 onClick={() => handleUpdateRevisions(q.id, (q.revisions || 0) + 1)}
                                 title="Increment revisions"
+                                disabled={isApiCalling}
                               >
                                 +
                               </button>
@@ -1086,10 +1103,10 @@ function App() {
                           </div>
 
                           <div className="col-action">
-                            <button className="btn-edit" title="Edit this question" onClick={() => handleEditClick(q)}>
+                            <button className="btn-edit" title="Edit this question" onClick={() => handleEditClick(q)} disabled={isApiCalling}>
                               <Edit size={16} />
                             </button>
-                            <button className="btn-delete" title="Delete this question" onClick={() => handleDeleteClick(q)}>
+                            <button className="btn-delete" title="Delete this question" onClick={() => handleDeleteClick(q)} disabled={isApiCalling}>
                               <Trash2 size={16} />
                             </button>
                           </div>
@@ -1120,7 +1137,7 @@ function App() {
                 <PlusCircle className="modal-header-icon text-accent" size={24} />
                 <h2>Add New Question</h2>
               </div>
-              <button className="modal-close btn-close-modal" onClick={() => setIsAddModalOpen(false)}>
+              <button className="modal-close btn-close-modal" onClick={() => setIsAddModalOpen(false)} disabled={isApiCalling}>
                 <X size={18} />
               </button>
             </div>
@@ -1213,8 +1230,8 @@ function App() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Save Question</button>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsAddModalOpen(false)} disabled={isApiCalling}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={isApiCalling}>Save Question</button>
               </div>
             </form>
           </div>
@@ -1230,7 +1247,7 @@ function App() {
                 <Edit className="modal-header-icon text-accent" size={24} />
                 <h2>Edit Question</h2>
               </div>
-              <button className="modal-close btn-close-modal" onClick={() => setIsEditModalOpen(false)}>
+              <button className="modal-close btn-close-modal" onClick={() => setIsEditModalOpen(false)} disabled={isApiCalling}>
                 <X size={18} />
               </button>
             </div>
@@ -1318,8 +1335,8 @@ function App() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Update Question</button>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsEditModalOpen(false)} disabled={isApiCalling}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={isApiCalling}>Update Question</button>
               </div>
             </form>
           </div>
@@ -1335,7 +1352,7 @@ function App() {
                 <AlertTriangle className="modal-header-icon text-danger" size={24} />
                 <h2>Reset All Progress?</h2>
               </div>
-              <button className="modal-close btn-close-modal" onClick={() => setIsResetModalOpen(false)}>
+              <button className="modal-close btn-close-modal" onClick={() => setIsResetModalOpen(false)} disabled={isApiCalling}>
                 <X size={18} />
               </button>
             </div>
@@ -1347,8 +1364,8 @@ function App() {
               </div>
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setIsResetModalOpen(false)}>Cancel</button>
-              <button type="button" className="btn btn-danger" onClick={handleResetConfirm}>Yes, Reset Progress</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsResetModalOpen(false)} disabled={isApiCalling}>Cancel</button>
+              <button type="button" className="btn btn-danger" onClick={handleResetConfirm} disabled={isApiCalling}>Yes, Reset Progress</button>
             </div>
           </div>
         </div>
@@ -1364,7 +1381,7 @@ function App() {
               {t.type === 'warning' && <AlertTriangle size={14} />}
             </div>
             <div className="toast-message">{t.message}</div>
-            <button className="toast-close" onClick={() => setToasts(prev => prev.filter(item => item.id !== t.id))}>
+            <button className="toast-close" onClick={() => setToasts(prev => prev.filter(item => item.id !== t.id))} disabled={isApiCalling}>
               <X size={14} />
             </button>
           </div>
