@@ -16,8 +16,7 @@ const QuestionTable = ({
   handleDeleteClick,
   isApiCalling
 }) => {
-  const reduxLoading = useSelector((state) => state.questions.loading);
-  const isLoading = reduxLoading || isApiCalling;
+  const { loading, initialFetched } = useSelector((state) => state.questions);
 
   return (
     <div>
@@ -34,12 +33,11 @@ const QuestionTable = ({
         </div>
       )}
 
-      {isLoading ? (
-        <div className="empty-state" style={{ minHeight: '260px' }}>
-          <div className="loading-spinner-wrapper" style={{ marginBottom: '0.75rem' }}>
-            <Loader2 className="spinner text-accent" size={36} />
-          </div>
-          <h3>Loading...</h3>
+      {/* Show Loading state ONLY during 1st question API call after login */}
+      {loading && !initialFetched ? (
+        <div className="empty-state">
+          <Loader2 className="spinner text-accent" size={40} />
+          <h3 style={{ marginTop: '0.75rem' }}>Loading...</h3>
           <p>Fetching questions from the server...</p>
         </div>
       ) : questionsToRender.length === 0 ? (
@@ -59,7 +57,7 @@ const QuestionTable = ({
           </button>
         </div>
       ) : (
-        <div className="questions-table-container">
+        <div className="questions-table-container" style={{ transition: 'opacity 0.2s ease', opacity: loading ? 0.6 : 1 }}>
           <div className="questions-table-header">
             <div className="col-status">Status</div>
             <div className="col-title">Title</div>
@@ -81,7 +79,7 @@ const QuestionTable = ({
                 handleUpdateRevisions={handleUpdateRevisions}
                 handleEditClick={handleEditClick}
                 handleDeleteClick={handleDeleteClick}
-                isApiCalling={isApiCalling}
+                isApiCalling={isApiCalling || loading}
               />
             ))}
           </div>

@@ -7,6 +7,7 @@ const initialState = {
   currentPage: 1,
   limit: 20,
   loading: false,
+  initialFetched: false,
   error: null,
   filters: {
     search: '',
@@ -50,6 +51,7 @@ const questionSlice = createSlice({
         if (payload.topicsList) state.topicsList = payload.topicsList;
       }
       state.loading = false;
+      state.initialFetched = true;
       state.error = null;
     },
     setLoading: (state, action) => {
@@ -62,7 +64,7 @@ const questionSlice = createSlice({
     setFilter: (state, action) => {
       const { field, value } = action.payload;
       state.filters[field] = value;
-      state.currentPage = 1; // Reset to page 1 on filter change
+      state.currentPage = 1;
     },
     setFilters: (state, action) => {
       state.filters = { ...state.filters, ...action.payload };

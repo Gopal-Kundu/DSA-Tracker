@@ -45,19 +45,19 @@ const getQuestions = async (req, res) => {
     }
 
     // Sorting: default to createdAt: -1 (newest created questions first)
-    let sortOptions = { createdAt: 1, _id: 1 };
+    let sortOptions = { createdAt: -1, _id: -1 };
     if (sort === 'time-asc') sortOptions = { timeTaken: 1, createdAt: -1 };
     else if (sort === 'time-desc') sortOptions = { timeTaken: -1, createdAt: -1 };
     else if (sort === 'rev-asc') sortOptions = { revisions: 1, createdAt: -1 };
     else if (sort === 'rev-desc') sortOptions = { revisions: -1, createdAt: -1 };
     else if (sort === 'created-asc') sortOptions = { createdAt: 1, _id: 1 };
-    else sortOptions = { createdAt: 1, _id: 1 };
+    else sortOptions = { createdAt: -1, _id: -1 };
 
     // Total count of matching questions
     const totalQuestions = await Question.countDocuments(query);
     const totalPages = Math.ceil(totalQuestions / limit) || 1;
     const safePage = Math.min(Math.max(1, page), totalPages);
-
+    sort = 1
     const questions = await Question.find(query)
       .sort(sortOptions)
       .skip((safePage - 1) * limit)

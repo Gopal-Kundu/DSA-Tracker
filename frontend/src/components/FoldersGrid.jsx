@@ -2,18 +2,15 @@ import React from 'react';
 import { Folder, FolderOpen, Loader2 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 
-const FoldersGrid = ({ foldersData, setActiveFolder, isApiCalling }) => {
-  const reduxLoading = useSelector((state) => state.questions.loading);
-  const isLoading = reduxLoading || isApiCalling;
+const FoldersGrid = ({ foldersData, setActiveFolder }) => {
+  const { loading, initialFetched } = useSelector((state) => state.questions);
 
-  if (isLoading) {
+  if (loading && !initialFetched) {
     return (
-      <div className="empty-state" style={{ minHeight: '260px' }}>
-        <div className="loading-spinner-wrapper" style={{ marginBottom: '0.75rem' }}>
-          <Loader2 className="spinner text-accent" size={36} />
-        </div>
-        <h3>Loading...</h3>
-        <p>Fetching topic folders from server...</p>
+      <div className="empty-state">
+        <Loader2 className="spinner text-accent" size={40} />
+        <h3 style={{ marginTop: '0.75rem' }}>Loading...</h3>
+        <p>Fetching folders from the server...</p>
       </div>
     );
   }
@@ -29,7 +26,7 @@ const FoldersGrid = ({ foldersData, setActiveFolder, isApiCalling }) => {
   }
 
   return (
-    <div className="folders-grid">
+    <div className="folders-grid" style={{ transition: 'opacity 0.2s ease', opacity: loading ? 0.6 : 1 }}>
       {foldersData.map(folder => {
         const percent = folder.total > 0 ? Math.round((folder.solved / folder.total) * 100) : 0;
         return (

@@ -64,6 +64,7 @@ function App() {
   const [username, setUsername] = useState('');
   const [currentView, setCurrentView] = useState('landing');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isInitialAuthChecking, setIsInitialAuthChecking] = useState(true);
 
   // Auth Form State
   const [authForm, setAuthForm] = useState({ username: '', password: '' });
@@ -178,7 +179,7 @@ function App() {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        dispatch(setReduxLoading(true));
+        setIsInitialAuthChecking(true);
         const response = await customFetch(`${baseURL}/api/auth/me`);
         if (response.ok) {
           const data = await response.json();
@@ -196,12 +197,12 @@ function App() {
         setUsername('');
         setCurrentView('landing');
       } finally {
-        dispatch(setReduxLoading(false));
+        setIsInitialAuthChecking(false);
       }
     };
 
     checkAuthStatus();
-  }, [customFetch, dispatch]);
+  }, [customFetch]);
 
   // Helper setter for filters to dispatch to Redux
   const handleSetFilters = useCallback((newFiltersOrUpdater) => {
@@ -585,7 +586,7 @@ function App() {
       />
 
       <main className="main-content">
-        {questionsLoading && questions.length === 0 ? (
+        {isInitialAuthChecking ? (
           <div className="loading-state">
             <div className="loading-spinner-wrapper">
               <Loader2 className="spinner text-accent" size={44} />
@@ -633,7 +634,6 @@ function App() {
                   <FoldersGrid
                     foldersData={foldersData}
                     setActiveFolder={handleSetActiveFolder}
-                    isApiCalling={isApiCalling}
                   />
                 ) : (
                   <>
