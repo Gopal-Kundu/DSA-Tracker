@@ -22,10 +22,10 @@ import NotesModal from './components/modals/NotesModal';
 import ResetModal from './components/modals/ResetModal';
 
 function App() {
-  // Authentication & Navigation State
-  const [token, setToken] = useState(localStorage.getItem('token') || '');
-  const [username, setUsername] = useState(localStorage.getItem('username') || '');
-  const [currentView, setCurrentView] = useState(localStorage.getItem('token') ? 'dashboard' : 'landing');
+  // Authentication & Session State
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [username, setUsername] = useState('');
+  const [currentView, setCurrentView] = useState('landing');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Auth Form State
@@ -41,10 +41,14 @@ function App() {
   const [activeRequests, setActiveRequests] = useState(0);
   const isApiCalling = activeRequests > 0;
 
-  const customFetch = async (url, options) => {
+  // Custom fetch helper that includes credentials (HTTP cookies)
+  const customFetch = async (url, options = {}) => {
     setActiveRequests(prev => prev + 1);
     try {
-      return await fetch(url, options);
+      return await fetch(url, {
+        ...options,
+        credentials: 'include'
+      });
     } finally {
       setActiveRequests(prev => Math.max(0, prev - 1));
     }
@@ -101,22 +105,17 @@ function App() {
   };
 
   // Fetch questions for authenticated user
-  const fetchQuestions = async (activeToken) => {
-    const targetToken = activeToken || token;
-    if (!targetToken) return;
-
+  const fetchQuestions = async () => {
     try {
       setLoading(true);
-      const response = await customFetch(`${baseURL}/api/questions`, {
-        headers: {
-          'Authorization': `Bearer ${targetToken}`
-        }
-      });
+      const response = await customFetch(`${baseURL}/api/questions`);
       if (response.ok) {
         const data = await response.json();
         setQuestions(data);
       } else if (response.status === 401) {
-        handleLogout();
+        setIsAuthenticated(false);
+        setUsername('');
+        setCurrentView('landing');
         showToast("Session expired. Please log in again.", "warning");
       }
     } catch (error) {
@@ -127,12 +126,35 @@ function App() {
     }
   };
 
-  // Fetch on mount/token change
-  useEffect(() => {
-    if (token) {
-      fetchQuestions(token);
+  // Verify session cookie on mount
+  const checkAuthStatus = async () => {
+    try {
+      setLoading(true);
+      const response = await customFetch(`${baseURL}/api/auth/me`);
+      if (response.ok) {
+        const data = await response.json();
+        setUsername(data.user.username);
+        setIsAuthenticated(true);
+        setCurrentView('dashboard');
+        fetchQuestions();
+      } else {
+        setIsAuthenticated(false);
+        setUsername('');
+        setCurrentView('landing');
+      }
+    } catch (error) {
+      console.error('Auth verification error:', error);
+      setIsAuthenticated(false);
+      setUsername('');
+      setCurrentView('landing');
+    } finally {
+      setLoading(false);
     }
-  }, [token]);
+  };
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
 
   // Auth Handlers
   const handleAuthSubmit = async (e, type) => {
@@ -160,12 +182,11 @@ function App() {
 
       const data = await response.json();
       if (response.ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('username', data.user.username);
-        setToken(data.token);
         setUsername(data.user.username);
+        setIsAuthenticated(true);
         setAuthForm({ username: '', password: '' });
         setCurrentView('dashboard');
+        fetchQuestions();
         showToast(
           type === 'login'
             ? `Welcome back, ${data.user.username}!`
@@ -183,15 +204,19 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    setToken('');
-    setUsername('');
-    setQuestions([]);
-    setCurrentView('landing');
-    setIsMobileMenuOpen(false);
-    showToast("Logged out successfully.", "info");
+  const handleLogout = async () => {
+    try {
+      await customFetch(`${baseURL}/api/auth/logout`, { method: 'POST' });
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setIsAuthenticated(false);
+      setUsername('');
+      setQuestions([]);
+      setCurrentView('landing');
+      setIsMobileMenuOpen(false);
+      showToast("Logged out successfully.", "info");
+    }
   };
 
   // Compute stats reactively
@@ -200,20 +225,19 @@ function App() {
     const solved = questions.filter(q => q.done).length;
     const percentage = total > 0 ? Math.round((solved / total) * 100) : 0;
 
-    const uniqueTopics = new Set(questions.map(q => q.topic));
-    const totalTopics = uniqueTopics.size;
+    const topicsSet = new Set(questions.map(q => q.topic));
 
-    const diffBreakdown = {
-      Easy: { total: 0, solved: 0 },
-      Medium: { total: 0, solved: 0 },
-      Hard: { total: 0, solved: 0 }
+    const difficulty = {
+      Easy: { solved: 0, total: 0 },
+      Medium: { solved: 0, total: 0 },
+      Hard: { solved: 0, total: 0 }
     };
 
     questions.forEach(q => {
-      if (diffBreakdown[q.difficulty]) {
-        diffBreakdown[q.difficulty].total++;
+      if (difficulty[q.difficulty]) {
+        difficulty[q.difficulty].total += 1;
         if (q.done) {
-          diffBreakdown[q.difficulty].solved++;
+          difficulty[q.difficulty].solved += 1;
         }
       }
     });
@@ -222,190 +246,107 @@ function App() {
       total,
       solved,
       percentage,
-      totalTopics,
-      topicsList: Array.from(uniqueTopics).sort(),
-      difficulty: diffBreakdown
+      totalTopics: topicsSet.size,
+      difficulty
     };
   }, [questions]);
 
-  // Toggle solved status
-  const toggleQuestionStatus = async (id) => {
-    const q = questions.find(item => (item._id || item.id) === id);
-    if (!q) return;
-    const qId = q._id || q.id;
-    const newDoneState = !q.done;
+  // Topic options for filter dropdown
+  const topicsList = useMemo(() => {
+    const set = new Set(questions.map(q => q.topic));
+    return Array.from(set).sort();
+  }, [questions]);
 
-    setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, done: newDoneState } : item));
+  // Filtered & Sorted questions logic
+  const filteredQuestions = useMemo(() => {
+    let result = [...questions];
+
+    // Apply Search Filter
+    if (filters.search.trim() !== '') {
+      const q = filters.search.toLowerCase().trim();
+      result = result.filter(item =>
+        item.name.toLowerCase().includes(q) ||
+        item.topic.toLowerCase().includes(q)
+      );
+    }
+
+    // Apply Topic Filter
+    if (filters.topic !== 'all') {
+      result = result.filter(item => item.topic === filters.topic);
+    }
+
+    // Apply Difficulty Filter
+    if (filters.difficulty !== 'all') {
+      result = result.filter(item => item.difficulty === filters.difficulty);
+    }
+
+    // Apply Status Filter
+    if (filters.status !== 'all') {
+      const isSolved = filters.status === 'solved';
+      result = result.filter(item => item.done === isSolved);
+    }
+
+    // Apply Sorting Options
+    if (filters.sort === 'time-asc') {
+      result.sort((a, b) => (a.timeTaken || 0) - (b.timeTaken || 0));
+    } else if (filters.sort === 'time-desc') {
+      result.sort((a, b) => (b.timeTaken || 0) - (a.timeTaken || 0));
+    } else if (filters.sort === 'rev-asc') {
+      result.sort((a, b) => (a.revisions || 0) - (b.revisions || 0));
+    } else if (filters.sort === 'rev-desc') {
+      result.sort((a, b) => (b.revisions || 0) - (a.revisions || 0));
+    }
+
+    return result;
+  }, [questions, filters]);
+
+  // Questions to render based on Folder selection
+  const questionsToRender = useMemo(() => {
+    if (viewMode === 'folder' && activeFolder) {
+      return filteredQuestions.filter(q => q.topic === activeFolder);
+    }
+    return filteredQuestions;
+  }, [filteredQuestions, viewMode, activeFolder]);
+
+  // Folders Aggregated Data for Folder View
+  const foldersData = useMemo(() => {
+    const map = {};
+    filteredQuestions.forEach(q => {
+      if (!map[q.topic]) {
+        map[q.topic] = { name: q.topic, total: 0, solved: 0, easy: 0, medium: 0, hard: 0 };
+      }
+      map[q.topic].total += 1;
+      if (q.done) map[q.topic].solved += 1;
+      if (q.difficulty === 'Easy') map[q.topic].easy += 1;
+      if (q.difficulty === 'Medium') map[q.topic].medium += 1;
+      if (q.difficulty === 'Hard') map[q.topic].hard += 1;
+    });
+    return Object.values(map).sort((a, b) => a.name.localeCompare(b.name));
+  }, [filteredQuestions]);
+
+  // Toggle question solved status
+  const toggleQuestionStatus = async (id) => {
+    const question = questions.find(q => (q._id || q.id) === id);
+    if (!question) return;
+
+    const nextDone = !question.done;
+    setQuestions(prev => prev.map(q => (q._id || q.id) === id ? { ...q, done: nextDone } : q));
 
     try {
-      const response = await customFetch(`${baseURL}/api/questions/${qId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ done: newDoneState })
+      const response = await customFetch(`${baseURL}/api/questions/${id}/toggle`, {
+        method: 'PATCH'
       });
       if (response.ok) {
-        if (newDoneState) {
-          showToast(`"${q.name}" marked as completed!`, "success");
-        } else {
-          showToast(`"${q.name}" marked as incomplete.`, "info");
-        }
+        showToast(nextDone ? "Marked as solved!" : "Marked as unsolved.", "info");
       } else {
-        setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, done: !newDoneState } : item));
+        setQuestions(prev => prev.map(q => (q._id || q.id) === id ? { ...q, done: !nextDone } : q));
         showToast("Failed to update status on server.", "warning");
       }
     } catch (error) {
-      console.error('Failed to update status on server:', error);
-      setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, done: !newDoneState } : item));
-      showToast("Failed to update status on server.", "warning");
+      console.error('Error toggling status:', error);
+      setQuestions(prev => prev.map(q => (q._id || q.id) === id ? { ...q, done: !nextDone } : q));
+      showToast("Network error updating question status.", "warning");
     }
-  };
-
-  // Update revisions counter
-  const handleUpdateRevisions = async (id, newRevisionsVal) => {
-    if (newRevisionsVal < 0) return;
-    const q = questions.find(item => (item._id || item.id) === id);
-    if (!q) return;
-    const qId = q._id || q.id;
-    const oldRevisions = q.revisions || 0;
-
-    setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, revisions: newRevisionsVal } : item));
-
-    try {
-      const response = await customFetch(`${baseURL}/api/questions/${qId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ revisions: newRevisionsVal })
-      });
-      if (response.ok) {
-        showToast(`Updated revisions for "${q.name}" to ${newRevisionsVal}.`, "success");
-      } else {
-        setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, revisions: oldRevisions } : item));
-        showToast("Failed to update revisions on server.", "warning");
-      }
-    } catch (error) {
-      console.error('Failed to update revisions:', error);
-      setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, revisions: oldRevisions } : item));
-      showToast("Failed to update revisions on server.", "warning");
-    }
-  };
-
-  const parseTimeInput = (val) => {
-    const num = parseFloat(val);
-    return isNaN(num) ? 0 : Math.round(num * 100) / 100;
-  };
-
-  // Add question handler
-  const handleAddSubmit = async (e) => {
-    e.preventDefault();
-    if (!addForm.topic.trim() || !addForm.name.trim() || !addForm.link.trim()) return;
-
-    const parsedTime = parseTimeInput(addForm.timeTaken);
-
-    const newQuestion = {
-      topic: addForm.topic.trim(),
-      name: addForm.name.trim(),
-      link: addForm.link.trim(),
-      difficulty: addForm.difficulty,
-      youtube: addForm.youtube.trim(),
-      timeTaken: parsedTime,
-      notes: addForm.notes.trim(),
-      done: false
-    };
-
-    try {
-      const response = await customFetch(`${baseURL}/api/questions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(newQuestion)
-      });
-      if (response.ok) {
-        const responseData = await response.json();
-        setQuestions(prev => [...prev, responseData.question || responseData]);
-        setIsAddModalOpen(false);
-        setAddForm({ topic: '', name: '', link: '', difficulty: 'Medium', youtube: '', timeTaken: '', notes: '' });
-        showToast(`"${newQuestion.name}" added successfully!`, "success");
-      } else {
-        showToast("Failed to add question.", "warning");
-      }
-    } catch (error) {
-      console.error('Error adding question:', error);
-      showToast("Failed to add question.", "warning");
-    }
-  };
-
-  // Open edit modal and populate data
-  const handleEditClick = (q) => {
-    setEditForm({
-      id: q._id || q.id,
-      topic: q.topic,
-      name: q.name,
-      link: q.link,
-      difficulty: q.difficulty,
-      youtube: q.youtube || '',
-      timeTaken: q.timeTaken || '',
-      notes: q.notes || ''
-    });
-    setIsEditModalOpen(true);
-  };
-
-  // Edit question handler
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    if (!editForm.topic.trim() || !editForm.name.trim() || !editForm.link.trim()) return;
-
-    const parsedTime = parseTimeInput(editForm.timeTaken);
-
-    const updatedFields = {
-      topic: editForm.topic.trim(),
-      name: editForm.name.trim(),
-      link: editForm.link.trim(),
-      difficulty: editForm.difficulty,
-      youtube: editForm.youtube.trim(),
-      timeTaken: parsedTime,
-      notes: editForm.notes.trim()
-    };
-
-    try {
-      const response = await customFetch(`${baseURL}/api/questions/${editForm.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updatedFields)
-      });
-      if (response.ok) {
-        const responseData = await response.json();
-        setQuestions(prev => prev.map(item => (item._id || item.id) === editForm.id ? (responseData.question || { ...item, ...updatedFields }) : item));
-        setIsEditModalOpen(false);
-        showToast(`"${updatedFields.name}" updated!`, "success");
-      } else {
-        showToast("Failed to update question.", "warning");
-      }
-    } catch (error) {
-      console.error('Error updating question:', error);
-      showToast("Failed to update question.", "warning");
-    }
-  };
-
-  // Open Notes Modal
-  const openNotesModal = (q) => {
-    setNoteModalData({
-      id: q._id || q.id,
-      name: q.name,
-      topic: q.topic,
-      notes: q.notes || ''
-    });
-    setIsNoteModalOpen(true);
   };
 
   // Save Notes handler
@@ -417,8 +358,7 @@ function App() {
       const response = await customFetch(`${baseURL}/api/questions/${noteModalData.id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ notes: noteModalData.notes })
       });
@@ -431,152 +371,197 @@ function App() {
         showToast("Failed to save note.", "warning");
       }
     } catch (error) {
-      console.error('Error saving note:', error);
-      showToast("Failed to save note.", "warning");
+      console.error('Error saving notes:', error);
+      showToast("Network error saving note.", "warning");
     }
   };
 
-  // Delete question handler
-  const handleDeleteClick = async (q) => {
-    if (!window.confirm(`Are you sure you want to delete "${q.name}"?`)) return;
-    const qId = q._id || q.id;
+  const openNotesModal = (q) => {
+    setNoteModalData({
+      id: q._id || q.id,
+      name: q.name,
+      topic: q.topic,
+      notes: q.notes || ''
+    });
+    setIsNoteModalOpen(true);
+  };
+
+  // Add Question Submission
+  const handleAddSubmit = async (e) => {
+    e.preventDefault();
+    if (!addForm.name.trim() || !addForm.topic.trim() || !addForm.link.trim()) {
+      showToast("Please fill in all required fields.", "warning");
+      return;
+    }
+
+    try {
+      const response = await customFetch(`${baseURL}/api/questions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: addForm.name.trim(),
+          topic: addForm.topic.trim(),
+          difficulty: addForm.difficulty,
+          link: addForm.link.trim(),
+          youtube: addForm.youtube.trim(),
+          timeTaken: addForm.timeTaken ? parseFloat(addForm.timeTaken) : null,
+          notes: addForm.notes.trim()
+        })
+      });
+
+      if (response.ok) {
+        const newQuestion = await response.json();
+        setQuestions(prev => [newQuestion, ...prev]);
+        setIsAddModalOpen(false);
+        setAddForm({
+          topic: '',
+          name: '',
+          link: '',
+          difficulty: 'Medium',
+          youtube: '',
+          timeTaken: '',
+          notes: ''
+        });
+        showToast(`Added "${newQuestion.name}" to your sheet.`, "success");
+      } else {
+        const err = await response.json();
+        showToast(err.error || "Failed to add question.", "warning");
+      }
+    } catch (error) {
+      console.error('Error adding question:', error);
+      showToast("Server error adding question.", "warning");
+    }
+  };
+
+  // Open Edit Modal
+  const handleEditClick = (question) => {
+    setEditForm({
+      id: question._id || question.id,
+      name: question.name,
+      topic: question.topic,
+      difficulty: question.difficulty,
+      link: question.link,
+      youtube: question.youtube || '',
+      timeTaken: question.timeTaken ? question.timeTaken.toString() : '',
+      notes: question.notes || ''
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // Edit Question Submission
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editForm.name.trim() || !editForm.topic.trim() || !editForm.link.trim()) {
+      showToast("Please fill in all required fields.", "warning");
+      return;
+    }
+
+    try {
+      const response = await customFetch(`${baseURL}/api/questions/${editForm.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: editForm.name.trim(),
+          topic: editForm.topic.trim(),
+          difficulty: editForm.difficulty,
+          link: editForm.link.trim(),
+          youtube: editForm.youtube.trim(),
+          timeTaken: editForm.timeTaken ? parseFloat(editForm.timeTaken) : null,
+          notes: editForm.notes.trim()
+        })
+      });
+
+      if (response.ok) {
+        const updatedQuestion = await response.json();
+        setQuestions(prev => prev.map(q => (q._id || q.id) === editForm.id ? updatedQuestion : q));
+        setIsEditModalOpen(false);
+        showToast(`Updated "${updatedQuestion.name}".`, "success");
+      } else {
+        const err = await response.json();
+        showToast(err.error || "Failed to update question.", "warning");
+      }
+    } catch (error) {
+      console.error('Error updating question:', error);
+      showToast("Server error updating question.", "warning");
+    }
+  };
+
+  // Delete Question
+  const handleDeleteClick = async (question) => {
+    const qId = question._id || question.id;
+    if (!window.confirm(`Are you sure you want to delete "${question.name}"?`)) return;
 
     try {
       const response = await customFetch(`${baseURL}/api/questions/${qId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        method: 'DELETE'
       });
+
       if (response.ok) {
-        setQuestions(prev => prev.filter(item => (item._id || item.id) !== qId));
-        const remainingTopics = new Set(questions.filter(item => (item._id || item.id) !== qId).map(item => item.topic));
-        if (filters.topic !== 'all' && !remainingTopics.has(filters.topic)) {
-          setFilters(prev => ({ ...prev, topic: 'all' }));
-        }
-        if (activeFolder && !remainingTopics.has(activeFolder)) {
-          setActiveFolder(null);
-        }
-        showToast(`"${q.name}" has been deleted.`, "warning");
+        setQuestions(prev => prev.filter(q => (q._id || q.id) !== qId));
+        showToast(`Deleted "${question.name}".`, "info");
       } else {
         showToast("Failed to delete question.", "warning");
       }
     } catch (error) {
       console.error('Error deleting question:', error);
-      showToast("Failed to delete question.", "warning");
+      showToast("Server error deleting question.", "warning");
     }
   };
 
-  // Reset progress handler
+  // Revisions Counter Increments / Decrements
+  const handleUpdateRevisions = async (id, nextRevisions) => {
+    if (nextRevisions < 0) return;
+    setQuestions(prev => prev.map(q => (q._id || q.id) === id ? { ...q, revisions: nextRevisions } : q));
+
+    try {
+      const response = await customFetch(`${baseURL}/api/questions/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ revisions: nextRevisions })
+      });
+
+      if (!response.ok) {
+        showToast("Failed to update revision count.", "warning");
+      }
+    } catch (error) {
+      console.error('Error updating revisions:', error);
+    }
+  };
+
+  // Confirm Reset Sheet Progress
   const handleResetConfirm = async () => {
     try {
       const response = await customFetch(`${baseURL}/api/questions/reset`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        method: 'POST'
       });
+
       if (response.ok) {
-        setQuestions(prev => prev.map(q => ({ ...q, done: false })));
+        setQuestions(prev => prev.map(q => ({ ...q, done: false, revisions: 0 })));
         setIsResetModalOpen(false);
-        showToast("All progress has been reset.", "info");
+        showToast("Sheet progress reset successfully.", "info");
       } else {
         showToast("Failed to reset progress.", "warning");
       }
     } catch (error) {
       console.error('Error resetting progress:', error);
-      showToast("Failed to reset progress.", "warning");
+      showToast("Server error resetting progress.", "warning");
     }
   };
 
-  // Filtered questions memoization
-  const filteredQuestions = useMemo(() => {
-    const searchLower = filters.search.toLowerCase();
-
-    const filtered = questions.filter(q => {
-      const matchesSearch = q.name.toLowerCase().includes(searchLower) || q.topic.toLowerCase().includes(searchLower);
-      const matchesTopic = filters.topic === 'all' || q.topic === filters.topic;
-      const matchesDifficulty = filters.difficulty === 'all' || q.difficulty === filters.difficulty;
-      const matchesStatus = filters.status === 'all' ||
-        (filters.status === 'solved' && q.done) ||
-        (filters.status === 'unsolved' && !q.done);
-      return matchesSearch && matchesTopic && matchesDifficulty && matchesStatus;
-    });
-
-    return filtered.sort((a, b) => {
-      const activeSort = filters.sort || 'none';
-
-      if (activeSort === 'time-asc') {
-        const timeA = typeof a.timeTaken === 'number' ? a.timeTaken : (Number(a.timeTaken) || 0);
-        const timeB = typeof b.timeTaken === 'number' ? b.timeTaken : (Number(b.timeTaken) || 0);
-        if (timeA !== timeB) return timeA - timeB;
-      } else if (activeSort === 'time-desc') {
-        const timeA = typeof a.timeTaken === 'number' ? a.timeTaken : (Number(a.timeTaken) || 0);
-        const timeB = typeof b.timeTaken === 'number' ? b.timeTaken : (Number(b.timeTaken) || 0);
-        if (timeA !== timeB) return timeB - timeA;
-      } else if (activeSort === 'rev-asc') {
-        const revA = a.revisions || 0;
-        const revB = b.revisions || 0;
-        if (revA !== revB) return revA - revB;
-      } else if (activeSort === 'rev-desc') {
-        const revA = a.revisions || 0;
-        const revB = b.revisions || 0;
-        if (revA !== revB) return revB - revA;
-      }
-
-      const idA = parseInt(a._id || a.id, 10);
-      const idB = parseInt(b._id || b.id, 10);
-      if (!isNaN(idA) && !isNaN(idB)) {
-        return idA - idB;
-      }
-      if (isNaN(idA) && !isNaN(idB)) return 1;
-      if (!isNaN(idA) && isNaN(idB)) return -1;
-      return (a._id || a.id || '').localeCompare(b._id || b.id || '');
-    });
-  }, [questions, filters]);
-
-  // Grouped questions data for Folders View
-  const foldersData = useMemo(() => {
-    const folders = {};
-    filteredQuestions.forEach(q => {
-      if (!folders[q.topic]) {
-        folders[q.topic] = {
-          name: q.topic,
-          total: 0,
-          solved: 0,
-          easy: 0,
-          medium: 0,
-          hard: 0
-        };
-      }
-      folders[q.topic].total++;
-      if (q.done) {
-        folders[q.topic].solved++;
-      }
-      if (q.difficulty === 'Easy') folders[q.topic].easy++;
-      else if (q.difficulty === 'Medium') folders[q.topic].medium++;
-      else if (q.difficulty === 'Hard') folders[q.topic].hard++;
-    });
-    return Object.values(folders).sort((a, b) => a.name.localeCompare(b.name));
-  }, [filteredQuestions]);
-
-  // Questions to render in the table
-  const questionsToRender = useMemo(() => {
-    if (viewMode === 'folder' && activeFolder) {
-      return filteredQuestions.filter(q => q.topic === activeFolder);
-    }
-    return filteredQuestions;
-  }, [filteredQuestions, viewMode, activeFolder]);
-
-  // SVG Circle Stroke offset calculation
-  const circleCircumference = 2 * Math.PI * 34;
+  // Radial Progress Circle math
+  const circleCircumference = 2 * Math.PI * 34; // r=34 => 213.628
   const strokeDashoffset = circleCircumference - (stats.percentage / 100) * circleCircumference;
 
   return (
-    <div className="app-container">
-      {/* Header Navbar */}
+    <div className="app-layout">
       <Navbar
-        token={token}
+        isAuthenticated={isAuthenticated}
         currentView={currentView}
         setCurrentView={setCurrentView}
         username={username}
@@ -591,9 +576,8 @@ function App() {
         setAuthForm={setAuthForm}
       />
 
-      {/* Mobile Navigation Drawer */}
       <MobileDrawer
-        token={token}
+        isAuthenticated={isAuthenticated}
         currentView={currentView}
         setCurrentView={setCurrentView}
         username={username}
@@ -608,97 +592,85 @@ function App() {
         setAuthForm={setAuthForm}
       />
 
-      {/* Main Views */}
-      {currentView === 'landing' && (
-        <LandingView setCurrentView={setCurrentView} isApiCalling={isApiCalling} />
-      )}
+      <main className="main-content">
+        {loading && !questions.length ? (
+          <div className="loading-state">
+            <div className="loading-spinner-wrapper">
+              <Loader2 className="spinner text-accent" size={44} />
+            </div>
+            <h3>Loading LeetTracker</h3>
+            <p>Syncing your personal DSA progress and revision sheet from the server...</p>
+          </div>
+        ) : (
+          <>
+            {currentView === 'landing' && (
+              <LandingView setCurrentView={setCurrentView} isApiCalling={isApiCalling} />
+            )}
 
-      {(currentView === 'login' || currentView === 'signup') && (
-        <AuthView
-          currentView={currentView}
-          setCurrentView={setCurrentView}
-          authForm={authForm}
-          setAuthForm={setAuthForm}
-          authError={authError}
-          setAuthError={setAuthError}
-          authLoading={authLoading}
-          handleAuthSubmit={handleAuthSubmit}
-          isApiCalling={isApiCalling}
-        />
-      )}
-
-      {currentView === 'dashboard' && (
-        <main className="main-content">
-          {/* Difficulty Stats panel */}
-          <HeroStats stats={stats} />
-
-          {/* Search Bar & Toolbar */}
-          <FilterToolbar
-            filters={filters}
-            setFilters={setFilters}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-            setActiveFolder={setActiveFolder}
-            topicsList={stats.topicsList}
-            setIsAddModalOpen={setIsAddModalOpen}
-            setIsResetModalOpen={setIsResetModalOpen}
-            isApiCalling={isApiCalling}
-          />
-
-          {/* Board View */}
-          <section className="topics-grid">
-            {loading ? (
-              <div className="loading-state">
-                <Loader2 className="spinner" size={32} />
-                <p>Initializing LeetTracker Board...</p>
-              </div>
-            ) : filteredQuestions.length === 0 && viewMode === 'table' ? (
-              <div className="empty-state">
-                <FolderOpen className="empty-state-icon" size={48} />
-                <h3>Your DSA revision sheet is empty</h3>
-                <p>Start curating your personal DSA roadmap by clicking the "Add Question" button above.</p>
-              </div>
-            ) : viewMode === 'folder' && !activeFolder ? (
-              <FoldersGrid foldersData={foldersData} setActiveFolder={setActiveFolder} />
-            ) : (
-              <QuestionTable
-                questionsToRender={questionsToRender}
-                viewMode={viewMode}
-                activeFolder={activeFolder}
-                setActiveFolder={setActiveFolder}
-                setFilters={setFilters}
-                toggleQuestionStatus={toggleQuestionStatus}
-                openNotesModal={openNotesModal}
-                handleUpdateRevisions={handleUpdateRevisions}
-                handleEditClick={handleEditClick}
-                handleDeleteClick={handleDeleteClick}
+            {(currentView === 'login' || currentView === 'signup') && (
+              <AuthView
+                currentView={currentView}
+                setCurrentView={setCurrentView}
+                authForm={authForm}
+                setAuthForm={setAuthForm}
+                authError={authError}
+                setAuthError={setAuthError}
+                authLoading={authLoading}
+                handleAuthSubmit={handleAuthSubmit}
                 isApiCalling={isApiCalling}
               />
             )}
-          </section>
-        </main>
-      )}
 
-      {/* Footer */}
-      <Footer />
+            {currentView === 'dashboard' && (
+              <>
+                <HeroStats stats={stats} />
+
+                <FilterToolbar
+                  filters={filters}
+                  setFilters={setFilters}
+                  viewMode={viewMode}
+                  setViewMode={setViewMode}
+                  setActiveFolder={setActiveFolder}
+                  setIsAddModalOpen={setIsAddModalOpen}
+                  setIsResetModalOpen={setIsResetModalOpen}
+                  topicsList={topicsList}
+                  isApiCalling={isApiCalling}
+                />
+
+                {viewMode === 'folder' && !activeFolder ? (
+                  <FoldersGrid
+                    foldersData={foldersData}
+                    setActiveFolder={setActiveFolder}
+                  />
+                ) : (
+                  <QuestionTable
+                    questionsToRender={questionsToRender}
+                    viewMode={viewMode}
+                    activeFolder={activeFolder}
+                    setActiveFolder={setActiveFolder}
+                    setFilters={setFilters}
+                    toggleQuestionStatus={toggleQuestionStatus}
+                    openNotesModal={openNotesModal}
+                    handleUpdateRevisions={handleUpdateRevisions}
+                    handleEditClick={handleEditClick}
+                    handleDeleteClick={handleDeleteClick}
+                    isApiCalling={isApiCalling}
+                  />
+                )}
+              </>
+            )}
+          </>
+        )}
+      </main>
 
       {/* Modals */}
-      <NotesModal
-        isNoteModalOpen={isNoteModalOpen}
-        setIsNoteModalOpen={setIsNoteModalOpen}
-        noteModalData={noteModalData}
-        setNoteModalData={setNoteModalData}
-        handleSaveNotes={handleSaveNotes}
-        isApiCalling={isApiCalling}
-      />
-
       <AddQuestionModal
         isAddModalOpen={isAddModalOpen}
         setIsAddModalOpen={setIsAddModalOpen}
         addForm={addForm}
         setAddForm={setAddForm}
         handleAddSubmit={handleAddSubmit}
-        topicsList={stats.topicsList}
+        topicsList={topicsList}
         isApiCalling={isApiCalling}
       />
 
@@ -708,7 +680,16 @@ function App() {
         editForm={editForm}
         setEditForm={setEditForm}
         handleEditSubmit={handleEditSubmit}
-        topicsList={stats.topicsList}
+        topicsList={topicsList}
+        isApiCalling={isApiCalling}
+      />
+
+      <NotesModal
+        isNoteModalOpen={isNoteModalOpen}
+        setIsNoteModalOpen={setIsNoteModalOpen}
+        noteModalData={noteModalData}
+        setNoteModalData={setNoteModalData}
+        handleSaveNotes={handleSaveNotes}
         isApiCalling={isApiCalling}
       />
 
@@ -719,8 +700,9 @@ function App() {
         isApiCalling={isApiCalling}
       />
 
-      {/* Toast Notifications */}
       <ToastContainer toasts={toasts} setToasts={setToasts} isApiCalling={isApiCalling} />
+
+      <Footer />
     </div>
   );
 }

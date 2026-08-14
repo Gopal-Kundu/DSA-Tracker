@@ -2,7 +2,7 @@ import React from 'react';
 import { LogOut, Menu, X } from 'lucide-react';
 
 const Navbar = ({
-  token,
+  isAuthenticated,
   currentView,
   setCurrentView,
   username,
@@ -22,13 +22,13 @@ const Navbar = ({
         <div className="header-left">
           <div
             className="logo-group"
-            onClick={() => !token && setCurrentView('landing')}
-            style={{ cursor: !token ? 'pointer' : 'default' }}
+            onClick={() => !isAuthenticated && setCurrentView('landing')}
+            style={{ cursor: !isAuthenticated ? 'pointer' : 'default' }}
           >
             <h1>LeetTracker</h1>
           </div>
 
-          {token && currentView === 'dashboard' && (
+          {isAuthenticated && currentView === 'dashboard' && (
             <div className="header-meta desktop-only">
               <div className="meta-item">
                 <span className="meta-label">Total Questions</span>
@@ -44,7 +44,7 @@ const Navbar = ({
 
         <div className="header-right">
           <div className="desktop-nav">
-            {token && currentView === 'dashboard' ? (
+            {isAuthenticated && currentView === 'dashboard' ? (
               <div className="header-user-info">
                 {/* Progress Circle */}
                 <div className="progress-radial-wrapper" style={{ marginRight: '1rem' }}>

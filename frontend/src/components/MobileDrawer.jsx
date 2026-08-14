@@ -2,7 +2,7 @@ import React from 'react';
 import { LogOut, X } from 'lucide-react';
 
 const MobileDrawer = ({
-  token,
+  isAuthenticated,
   currentView,
   setCurrentView,
   username,
@@ -30,7 +30,7 @@ const MobileDrawer = ({
         </div>
 
         <div className="drawer-body">
-          {token && currentView === 'dashboard' ? (
+          {isAuthenticated && currentView === 'dashboard' ? (
             <div className="drawer-user-section">
               <div className="drawer-user-meta">
                 <span className="username-display">@{username}</span>
