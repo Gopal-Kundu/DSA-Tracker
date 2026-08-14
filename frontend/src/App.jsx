@@ -1217,7 +1217,7 @@ function App() {
                   <div className="form-group grid-full">
                     <label htmlFor="input-youtube" className="form-label-with-icon">
                       <Youtube size={14} className="youtube-icon-red" />
-                      <span>YouTube Link (Optional)</span>
+                      <span>YouTube Link</span>
                     </label>
                     <input
                       type="url"
