@@ -57,7 +57,7 @@ const getQuestions = async (req, res) => {
     const totalQuestions = await Question.countDocuments(query);
     const totalPages = Math.ceil(totalQuestions / limit) || 1;
     const safePage = Math.min(Math.max(1, page), totalPages);
-    sort = 1
+
     const questions = await Question.find(query)
       .sort(sortOptions)
       .skip((safePage - 1) * limit)
