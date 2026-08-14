@@ -63,7 +63,7 @@ function App() {
     topic: 'all',
     difficulty: 'all',
     status: 'all',
-    revisionSort: 'none'
+    sort: 'none'
   });
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'folder'
   const [activeFolder, setActiveFolder] = useState(null); // name of active topic folder
@@ -310,10 +310,17 @@ function App() {
     }
   };
 
+  const parseTimeInput = (val) => {
+    const num = parseFloat(val);
+    return isNaN(num) ? 0 : Math.round(num * 100) / 100;
+  };
+
   // Add question handler
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     if (!addForm.topic.trim() || !addForm.name.trim() || !addForm.link.trim()) return;
+
+    const parsedTime = parseTimeInput(addForm.timeTaken);
 
     const newQuestion = {
       topic: addForm.topic.trim(),
@@ -321,7 +328,7 @@ function App() {
       link: addForm.link.trim(),
       difficulty: addForm.difficulty,
       youtube: addForm.youtube.trim(),
-      timeTaken: addForm.timeTaken.trim(),
+      timeTaken: parsedTime,
       done: false
     };
 
@@ -368,13 +375,15 @@ function App() {
     e.preventDefault();
     if (!editForm.topic.trim() || !editForm.name.trim() || !editForm.link.trim()) return;
 
+    const parsedTime = parseTimeInput(editForm.timeTaken);
+
     const updatedFields = {
       topic: editForm.topic.trim(),
       name: editForm.name.trim(),
       link: editForm.link.trim(),
       difficulty: editForm.difficulty,
       youtube: editForm.youtube.trim(),
-      timeTaken: editForm.timeTaken.trim()
+      timeTaken: parsedTime
     };
 
     try {
@@ -467,20 +476,26 @@ function App() {
       return matchesSearch && matchesTopic && matchesDifficulty && matchesStatus;
     });
 
-    // Sort questions: by revision (if selected) or original numeric/string order
+    // Sort questions: by selected sort order or default numeric/string order
     return filtered.sort((a, b) => {
-      if (filters.revisionSort === 'asc') {
+      const activeSort = filters.sort || 'none';
+
+      if (activeSort === 'time-asc') {
+        const timeA = typeof a.timeTaken === 'number' ? a.timeTaken : (Number(a.timeTaken) || 0);
+        const timeB = typeof b.timeTaken === 'number' ? b.timeTaken : (Number(b.timeTaken) || 0);
+        if (timeA !== timeB) return timeA - timeB;
+      } else if (activeSort === 'time-desc') {
+        const timeA = typeof a.timeTaken === 'number' ? a.timeTaken : (Number(a.timeTaken) || 0);
+        const timeB = typeof b.timeTaken === 'number' ? b.timeTaken : (Number(b.timeTaken) || 0);
+        if (timeA !== timeB) return timeB - timeA;
+      } else if (activeSort === 'rev-asc') {
         const revA = a.revisions || 0;
         const revB = b.revisions || 0;
-        if (revA !== revB) {
-          return revA - revB;
-        }
-      } else if (filters.revisionSort === 'desc') {
+        if (revA !== revB) return revA - revB;
+      } else if (activeSort === 'rev-desc') {
         const revA = a.revisions || 0;
         const revB = b.revisions || 0;
-        if (revA !== revB) {
-          return revB - revA;
-        }
+        if (revA !== revB) return revB - revA;
       }
 
       // Default sorting: original numeric order first, custom string keys at the end
@@ -929,15 +944,16 @@ function App() {
                   <option value="solved">Solved</option>
                   <option value="unsolved">Unsolved</option>
                 </select>
-
                 <select
-                  value={filters.revisionSort}
-                  onChange={(e) => setFilters(prev => ({ ...prev, revisionSort: e.target.value }))}
+                  value={filters.sort}
+                  onChange={(e) => setFilters(prev => ({ ...prev, sort: e.target.value }))}
                   className="custom-select"
                 >
-                  <option value="none">Sort by Revisions</option>
-                  <option value="asc">Revisions: Low to High</option>
-                  <option value="desc">Revisions: High to Low</option>
+                  <option value="none">Default Order</option>
+                  <option value="time-asc">Time: Low to High</option>
+                  <option value="time-desc">Time: High to Low</option>
+                  <option value="rev-desc">Revisions: High to Low</option>
+                  <option value="rev-asc">Revisions: Low to High</option>
                 </select>
               </div>
 
@@ -1029,7 +1045,7 @@ function App() {
                     <h3>No questions found</h3>
                     <p>No questions match your current search or filter criteria in this view.</p>
                     <button className="btn btn-secondary" onClick={() => {
-                      setFilters({ search: '', topic: 'all', difficulty: 'all', status: 'all', revisionSort: 'none' });
+                      setFilters({ search: '', topic: 'all', difficulty: 'all', status: 'all', sort: 'none' });
                     }} style={{ marginTop: '1rem' }} disabled={isApiCalling}>
                       Clear Filters
                     </button>
@@ -1079,7 +1095,7 @@ function App() {
                             </div>
 
                             <div className="col-timetaken">
-                              <span className="timetaken-badge">{q.timeTaken || 'N/A'}</span>
+                              <span className="timetaken-badge">{q.timeTaken ? `${Math.round(q.timeTaken * 100) / 100} min` : 'N/A'}</span>
                             </div>
 
                             <div className="col-youtube">
@@ -1259,12 +1275,14 @@ function App() {
                   <div className="form-group grid-full">
                     <label htmlFor="input-timetaken" className="form-label-with-icon">
                       <Clock size={14} />
-                      <span>Time Taken in Past (Optional)</span>
+                      <span>Time Taken (in minutes)</span>
                     </label>
                     <input
-                      type="text"
+                      type="number"
+                      min="0"
+                      step="any"
                       id="input-timetaken"
-                      placeholder="e.g. 25 mins, 1 hr..."
+                      placeholder="e.g., 25 or 12.5"
                       value={addForm.timeTaken}
                       onChange={(e) => setAddForm(prev => ({ ...prev, timeTaken: e.target.value }))}
                     />
@@ -1378,12 +1396,14 @@ function App() {
                   <div className="form-group grid-full">
                     <label htmlFor="edit-timetaken" className="form-label-with-icon">
                       <Clock size={14} />
-                      <span>Time Taken in Past (Optional)</span>
+                      <span>Time Taken (in minutes)</span>
                     </label>
                     <input
-                      type="text"
+                      type="number"
+                      min="0"
+                      step="any"
                       id="edit-timetaken"
-                      placeholder="e.g. 25 mins, 1 hr..."
+                      placeholder="e.g., 25 or 12.5"
                       value={editForm.timeTaken}
                       onChange={(e) => setEditForm(prev => ({ ...prev, timeTaken: e.target.value }))}
                     />

@@ -1,6 +1,11 @@
 const Question = require('../models/Question');
 const User = require('../models/User');
 
+const parseTimeTaken = (val) => {
+  const num = parseFloat(val);
+  return isNaN(num) ? 0 : Math.round(num * 100) / 100;
+};
+
 // Get all questions for the logged-in user
 const getAllQuestions = async (req, res) => {
   try {
@@ -22,7 +27,7 @@ const addQuestion = async (req, res) => {
       link,
       difficulty,
       youtube: youtube || '',
-      timeTaken: timeTaken || '',
+      timeTaken: parseTimeTaken(timeTaken),
       done: done || false,
       revisions: revisions || 0,
       user: req.user._id
@@ -104,7 +109,7 @@ const bulkAddQuestions = async (req, res) => {
       link: q.link,
       difficulty: q.difficulty || 'Medium',
       youtube: q.youtube || '',
-      timeTaken: q.timeTaken || '',
+      timeTaken: parseTimeTaken(q.timeTaken),
       done: typeof q.done === 'boolean' ? q.done : false,
       revisions: typeof q.revisions === 'number' ? q.revisions : 0,
       user: req.user._id
