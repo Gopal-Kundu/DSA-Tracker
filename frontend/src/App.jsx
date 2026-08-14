@@ -1,33 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Check,
-  Edit,
-  Trash2,
-  PlusCircle,
-  AlertTriangle,
-  ExternalLink,
-  FolderOpen,
-  Search,
-  X,
-  Loader2,
-  LogOut,
-  User,
-  Key,
-  Shield,
-  Sparkles,
-  Code,
-  Award,
-  Terminal,
-  Menu,
-  Folder,
-  List,
-  ArrowLeft,
-  Youtube,
-  Clock,
-  Linkedin
-} from 'lucide-react';
+import { FolderOpen, Loader2 } from 'lucide-react';
 import './App.css';
 import { baseURL } from './config';
+
+// Import Modular Components
+import Navbar from './components/Navbar';
+import MobileDrawer from './components/MobileDrawer';
+import Footer from './components/Footer';
+import ToastContainer from './components/ToastContainer';
+import LandingView from './components/LandingView';
+import AuthView from './components/AuthView';
+import HeroStats from './components/HeroStats';
+import FilterToolbar from './components/FilterToolbar';
+import FoldersGrid from './components/FoldersGrid';
+import QuestionTable from './components/QuestionTable';
+
+// Import Modals
+import AddQuestionModal from './components/modals/AddQuestionModal';
+import EditQuestionModal from './components/modals/EditQuestionModal';
+import NotesModal from './components/modals/NotesModal';
+import ResetModal from './components/modals/ResetModal';
 
 function App() {
   // Authentication & Navigation State
@@ -72,6 +64,8 @@ function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [noteModalData, setNoteModalData] = useState({ id: '', name: '', topic: '', notes: '' });
 
   // Form States
   const [addForm, setAddForm] = useState({
@@ -80,7 +74,8 @@ function App() {
     link: '',
     difficulty: 'Medium',
     youtube: '',
-    timeTaken: ''
+    timeTaken: '',
+    notes: ''
   });
 
   const [editForm, setEditForm] = useState({
@@ -90,7 +85,8 @@ function App() {
     link: '',
     difficulty: 'Medium',
     youtube: '',
-    timeTaken: ''
+    timeTaken: '',
+    notes: ''
   });
 
   // Toast Notification State
@@ -120,7 +116,6 @@ function App() {
         const data = await response.json();
         setQuestions(data);
       } else if (response.status === 401) {
-        // Token expired or invalid
         handleLogout();
         showToast("Session expired. Please log in again.", "warning");
       }
@@ -205,11 +200,9 @@ function App() {
     const solved = questions.filter(q => q.done).length;
     const percentage = total > 0 ? Math.round((solved / total) * 100) : 0;
 
-    // Unique topics count
     const uniqueTopics = new Set(questions.map(q => q.topic));
     const totalTopics = uniqueTopics.size;
 
-    // Difficulty breakdown
     const diffBreakdown = {
       Easy: { total: 0, solved: 0 },
       Medium: { total: 0, solved: 0 },
@@ -240,10 +233,8 @@ function App() {
     const q = questions.find(item => (item._id || item.id) === id);
     if (!q) return;
     const qId = q._id || q.id;
-
     const newDoneState = !q.done;
 
-    // Optimistic UI update
     setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, done: newDoneState } : item));
 
     try {
@@ -262,13 +253,11 @@ function App() {
           showToast(`"${q.name}" marked as incomplete.`, "info");
         }
       } else {
-        // Rollback on error
         setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, done: !newDoneState } : item));
         showToast("Failed to update status on server.", "warning");
       }
     } catch (error) {
       console.error('Failed to update status on server:', error);
-      // Rollback
       setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, done: !newDoneState } : item));
       showToast("Failed to update status on server.", "warning");
     }
@@ -280,10 +269,8 @@ function App() {
     const q = questions.find(item => (item._id || item.id) === id);
     if (!q) return;
     const qId = q._id || q.id;
-
     const oldRevisions = q.revisions || 0;
 
-    // Optimistic UI update
     setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, revisions: newRevisionsVal } : item));
 
     try {
@@ -298,13 +285,11 @@ function App() {
       if (response.ok) {
         showToast(`Updated revisions for "${q.name}" to ${newRevisionsVal}.`, "success");
       } else {
-        // Rollback
         setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, revisions: oldRevisions } : item));
         showToast("Failed to update revisions on server.", "warning");
       }
     } catch (error) {
       console.error('Failed to update revisions:', error);
-      // Rollback
       setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, revisions: oldRevisions } : item));
       showToast("Failed to update revisions on server.", "warning");
     }
@@ -329,6 +314,7 @@ function App() {
       difficulty: addForm.difficulty,
       youtube: addForm.youtube.trim(),
       timeTaken: parsedTime,
+      notes: addForm.notes.trim(),
       done: false
     };
 
@@ -345,7 +331,7 @@ function App() {
         const responseData = await response.json();
         setQuestions(prev => [...prev, responseData.question || responseData]);
         setIsAddModalOpen(false);
-        setAddForm({ topic: '', name: '', link: '', difficulty: 'Medium', youtube: '', timeTaken: '' });
+        setAddForm({ topic: '', name: '', link: '', difficulty: 'Medium', youtube: '', timeTaken: '', notes: '' });
         showToast(`"${newQuestion.name}" added successfully!`, "success");
       } else {
         showToast("Failed to add question.", "warning");
@@ -365,7 +351,8 @@ function App() {
       link: q.link,
       difficulty: q.difficulty,
       youtube: q.youtube || '',
-      timeTaken: q.timeTaken || ''
+      timeTaken: q.timeTaken || '',
+      notes: q.notes || ''
     });
     setIsEditModalOpen(true);
   };
@@ -383,7 +370,8 @@ function App() {
       link: editForm.link.trim(),
       difficulty: editForm.difficulty,
       youtube: editForm.youtube.trim(),
-      timeTaken: parsedTime
+      timeTaken: parsedTime,
+      notes: editForm.notes.trim()
     };
 
     try {
@@ -396,15 +384,55 @@ function App() {
         body: JSON.stringify(updatedFields)
       });
       if (response.ok) {
-        setQuestions(prev => prev.map(item => (item._id || item.id) === editForm.id ? { ...item, ...updatedFields } : item));
+        const responseData = await response.json();
+        setQuestions(prev => prev.map(item => (item._id || item.id) === editForm.id ? (responseData.question || { ...item, ...updatedFields }) : item));
         setIsEditModalOpen(false);
-        showToast(`"${updatedFields.name}" updated successfully!`, "success");
+        showToast(`"${updatedFields.name}" updated!`, "success");
       } else {
         showToast("Failed to update question.", "warning");
       }
     } catch (error) {
-      console.error('Error editing question:', error);
+      console.error('Error updating question:', error);
       showToast("Failed to update question.", "warning");
+    }
+  };
+
+  // Open Notes Modal
+  const openNotesModal = (q) => {
+    setNoteModalData({
+      id: q._id || q.id,
+      name: q.name,
+      topic: q.topic,
+      notes: q.notes || ''
+    });
+    setIsNoteModalOpen(true);
+  };
+
+  // Save Notes handler
+  const handleSaveNotes = async (e) => {
+    e.preventDefault();
+    if (!noteModalData.id) return;
+
+    try {
+      const response = await customFetch(`${baseURL}/api/questions/${noteModalData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ notes: noteModalData.notes })
+      });
+
+      if (response.ok) {
+        setQuestions(prev => prev.map(item => (item._id || item.id) === noteModalData.id ? { ...item, notes: noteModalData.notes } : item));
+        setIsNoteModalOpen(false);
+        showToast(`Note saved for "${noteModalData.name}"`, "success");
+      } else {
+        showToast("Failed to save note.", "warning");
+      }
+    } catch (error) {
+      console.error('Error saving note:', error);
+      showToast("Failed to save note.", "warning");
     }
   };
 
@@ -422,7 +450,6 @@ function App() {
       });
       if (response.ok) {
         setQuestions(prev => prev.filter(item => (item._id || item.id) !== qId));
-        // Reset topic filter if that topic was completely deleted
         const remainingTopics = new Set(questions.filter(item => (item._id || item.id) !== qId).map(item => item.topic));
         if (filters.topic !== 'all' && !remainingTopics.has(filters.topic)) {
           setFilters(prev => ({ ...prev, topic: 'all' }));
@@ -462,7 +489,7 @@ function App() {
     }
   };
 
-  // Filtered questions
+  // Filtered questions memoization
   const filteredQuestions = useMemo(() => {
     const searchLower = filters.search.toLowerCase();
 
@@ -476,7 +503,6 @@ function App() {
       return matchesSearch && matchesTopic && matchesDifficulty && matchesStatus;
     });
 
-    // Sort questions: by selected sort order or default numeric/string order
     return filtered.sort((a, b) => {
       const activeSort = filters.sort || 'none';
 
@@ -498,7 +524,6 @@ function App() {
         if (revA !== revB) return revB - revA;
       }
 
-      // Default sorting: original numeric order first, custom string keys at the end
       const idA = parseInt(a._id || a.id, 10);
       const idB = parseInt(b._id || b.id, 10);
       if (!isNaN(idA) && !isNaN(idB)) {
@@ -510,7 +535,7 @@ function App() {
     });
   }, [questions, filters]);
 
-  // Grouped questions data for Folders View, responsive to filters
+  // Grouped questions data for Folders View
   const foldersData = useMemo(() => {
     const folders = {};
     filteredQuestions.forEach(q => {
@@ -535,7 +560,7 @@ function App() {
     return Object.values(folders).sort((a, b) => a.name.localeCompare(b.name));
   }, [filteredQuestions]);
 
-  // Questions to render in the table (all filtered questions or just the ones in active folder)
+  // Questions to render in the table
   const questionsToRender = useMemo(() => {
     if (viewMode === 'folder' && activeFolder) {
       return filteredQuestions.filter(q => q.topic === activeFolder);
@@ -544,430 +569,81 @@ function App() {
   }, [filteredQuestions, viewMode, activeFolder]);
 
   // SVG Circle Stroke offset calculation
-  const circleCircumference = 2 * Math.PI * 34; // r=34
+  const circleCircumference = 2 * Math.PI * 34;
   const strokeDashoffset = circleCircumference - (stats.percentage / 100) * circleCircumference;
 
   return (
     <div className="app-container">
-      {/* Header */}
-      <header className="main-header">
-        <div className="header-container">
-          <div className="header-left">
-            <div className="logo-group" onClick={() => !token && setCurrentView('landing')} style={{ cursor: !token ? 'pointer' : 'default' }}>
-              <h1>LeetTracker</h1>
-            </div>
-
-            {token && currentView === 'dashboard' && (
-              <div className="header-meta desktop-only">
-                <div className="meta-item">
-                  <span className="meta-label">Total Questions</span>
-                  <span className="meta-val">{stats.total}</span>
-                </div>
-                <div className="meta-item">
-                  <span className="meta-label">Topics Available</span>
-                  <span className="meta-val">{stats.totalTopics}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="header-right">
-            <div className="desktop-nav">
-              {token && currentView === 'dashboard' ? (
-                <div className="header-user-info">
-                  {/* Progress Circle */}
-                  <div className="progress-radial-wrapper" style={{ marginRight: '1rem' }}>
-                    <div className="radial-svg-container">
-                      <svg viewBox="0 0 80 80">
-                        <circle className="circle-bg" cx="40" cy="40" r="34" />
-                        <circle
-                          className="circle-fill"
-                          cx="40"
-                          cy="40"
-                          r="34"
-                          strokeDasharray={circleCircumference}
-                          strokeDashoffset={strokeDashoffset}
-                        />
-                      </svg>
-                      <div className="radial-label-inner">
-                        <span className="radial-percent">{stats.percentage}%</span>
-                        <span className="radial-sub">SOLVED</span>
-                      </div>
-                    </div>
-                    <div className="progress-details">
-                      <span className="progress-fraction">{stats.solved} / {stats.total} Done</span>
-                    </div>
-                  </div>
-
-                  <span className="username-display">@{username}</span>
-                  <button className="btn-logout" onClick={handleLogout} title="Log out from LeetTracker" disabled={isApiCalling}>
-                    <LogOut size={14} style={{ marginRight: '0.4rem' }} /> Log Out
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button className="btn btn-secondary" onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('login'); }} disabled={isApiCalling}>
-                    Sign In
-                  </button>
-                  <button className="btn btn-primary" onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('signup'); }} disabled={isApiCalling}>
-                    Register
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Mobile Toggle Button */}
-            <button className="mobile-menu-toggle" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label="Toggle Menu" disabled={isApiCalling}>
-              {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          </div>
-        </div>
-      </header>
+      {/* Header Navbar */}
+      <Navbar
+        token={token}
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        username={username}
+        stats={stats}
+        circleCircumference={circleCircumference}
+        strokeDashoffset={strokeDashoffset}
+        handleLogout={handleLogout}
+        isMobileMenuOpen={isMobileMenuOpen}
+        setIsMobileMenuOpen={setIsMobileMenuOpen}
+        isApiCalling={isApiCalling}
+        setAuthError={setAuthError}
+        setAuthForm={setAuthForm}
+      />
 
       {/* Mobile Navigation Drawer */}
-      <div className={`mobile-drawer ${isMobileMenuOpen ? 'open' : ''}`}>
-        <div className="drawer-backdrop" onClick={() => setIsMobileMenuOpen(false)}></div>
-        <div className="drawer-content">
-          <div className="drawer-header">
-            <div className="logo-group">
-              <h1>LeetTracker</h1>
-            </div>
-            <button className="btn-close-drawer" onClick={() => setIsMobileMenuOpen(false)} aria-label="Close menu" disabled={isApiCalling}>
-              <X size={20} />
-            </button>
-          </div>
+      <MobileDrawer
+        token={token}
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        username={username}
+        stats={stats}
+        circleCircumference={circleCircumference}
+        strokeDashoffset={strokeDashoffset}
+        handleLogout={handleLogout}
+        isMobileMenuOpen={isMobileMenuOpen}
+        setIsMobileMenuOpen={setIsMobileMenuOpen}
+        isApiCalling={isApiCalling}
+        setAuthError={setAuthError}
+        setAuthForm={setAuthForm}
+      />
 
-          <div className="drawer-body">
-            {token && currentView === 'dashboard' ? (
-              <div className="drawer-user-section">
-                <div className="drawer-user-meta">
-                  <span className="username-display">@{username}</span>
-                </div>
-
-                {/* Progress Circle in Drawer */}
-                <div className="progress-radial-wrapper drawer-progress">
-                  <div className="radial-svg-container">
-                    <svg viewBox="0 0 80 80">
-                      <circle className="circle-bg" cx="40" cy="40" r="34" />
-                      <circle
-                        className="circle-fill"
-                        cx="40"
-                        cy="40"
-                        r="34"
-                        strokeDasharray={circleCircumference}
-                        strokeDashoffset={strokeDashoffset}
-                      />
-                    </svg>
-                    <div className="radial-label-inner">
-                      <span className="radial-percent">{stats.percentage}%</span>
-                      <span className="radial-sub">SOLVED</span>
-                    </div>
-                  </div>
-                  <div className="progress-details">
-                    <span className="progress-fraction">{stats.solved} / {stats.total} Done</span>
-                  </div>
-                </div>
-
-                <div className="drawer-stats">
-                  <div className="meta-item">
-                    <span className="meta-label">Total Questions</span>
-                    <span className="meta-val">{stats.total}</span>
-                  </div>
-                  <div className="meta-item">
-                    <span className="meta-label">Topics Available</span>
-                    <span className="meta-val">{stats.totalTopics}</span>
-                  </div>
-                </div>
-
-                <button className="btn btn-danger btn-logout-drawer" onClick={handleLogout} style={{ width: '100%', marginTop: '2rem' }} disabled={isApiCalling}>
-                  <LogOut size={16} style={{ marginRight: '0.5rem' }} /> Log Out
-                </button>
-              </div>
-            ) : (
-              <div className="drawer-auth-actions">
-                <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('login'); setIsMobileMenuOpen(false); }} disabled={isApiCalling}>
-                  Sign In
-                </button>
-                <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('signup'); setIsMobileMenuOpen(false); }} disabled={isApiCalling}>
-                  Register
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Body */}
+      {/* Main Views */}
       {currentView === 'landing' && (
-        <div className="landing-container">
-          <section className="landing-hero">
-
-            <h2 className="landing-title">Build Your Curated DSA Study Plan</h2>
-            <p className="landing-subtitle">
-              A premium, high-performance web dashboard built for students and professionals to build custom DSA sheets, track revision progress, and enable lightning-fast lookups.
-            </p>
-            <div className="landing-actions">
-              <button className="btn btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1rem' }} onClick={() => setCurrentView('signup')} disabled={isApiCalling}>
-                Get Started
-              </button>
-              <button className="btn btn-secondary" style={{ padding: '1rem 2.5rem', fontSize: '1rem' }} onClick={() => setCurrentView('login')} disabled={isApiCalling}>
-                Sign In to Account
-              </button>
-            </div>
-          </section>
-
-          <section className="features-grid">
-            <div className="feature-card">
-              <div className="feature-icon-wrapper">
-                <Terminal size={24} />
-              </div>
-              <h3>Curate Custom Lists</h3>
-              <p>Add your own selected questions, organize them into topics, and build the perfect personal roadmap for your revision goals.</p>
-            </div>
-
-            <div className="feature-card">
-              <div className="feature-icon-wrapper">
-                <Award size={24} />
-              </div>
-              <h3>Progress Isolation</h3>
-              <p>Create a secure account to track your individual solving progress, update difficulty details, and add custom entries.</p>
-            </div>
-
-            <div className="feature-card">
-              <div className="feature-icon-wrapper">
-                <Code size={24} />
-              </div>
-              <h3>Analytical Metrics</h3>
-              <p>Visualize your progress through interactive charts, easy/medium/hard progress bars, and percentage gauges.</p>
-            </div>
-          </section>
-        </div>
+        <LandingView setCurrentView={setCurrentView} isApiCalling={isApiCalling} />
       )}
 
       {(currentView === 'login' || currentView === 'signup') && (
-        <div className="auth-container">
-          <div className="auth-card">
-            <div className="auth-header">
-              <h2>{currentView === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
-              <p>
-                {currentView === 'login'
-                  ? 'Sign in to access your custom DSA sheet progress.'
-                  : 'Start tracking your LeetCode goals with isolated metrics.'}
-              </p>
-            </div>
-
-            <form className="auth-form" onSubmit={(e) => handleAuthSubmit(e, currentView)}>
-              {authError && <div className="auth-error">{authError}</div>}
-
-              <div className="form-group">
-                <label htmlFor="auth-username">Username</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    id="auth-username"
-                    placeholder="Enter your username"
-                    required
-                    style={{ paddingLeft: '2.5rem', width: '100%' }}
-                    value={authForm.username}
-                    onChange={(e) => setAuthForm(prev => ({ ...prev, username: e.target.value }))}
-                  />
-                  <User size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="auth-password">Password</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="password"
-                    id="auth-password"
-                    placeholder="Enter your password (min 6 chars)"
-                    required
-                    style={{ paddingLeft: '2.5rem', width: '100%' }}
-                    value={authForm.password}
-                    onChange={(e) => setAuthForm(prev => ({ ...prev, password: e.target.value }))}
-                  />
-                  <Key size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-                </div>
-              </div>
-
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem' }} disabled={authLoading || isApiCalling}>
-                {authLoading || isApiCalling ? (
-                  <>
-                    <Loader2 size={16} className="spinner" /> Authenticating...
-                  </>
-                ) : (
-                  currentView === 'login' ? 'Access Dashboard' : 'Generate Account'
-                )}
-              </button>
-            </form>
-
-            <div className="auth-footer">
-              {currentView === 'login' ? (
-                <>
-                  New to LeetTracker?
-                  <span className="auth-link" onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('signup'); }}>
-                    Create Account
-                  </span>
-                </>
-              ) : (
-                <>
-                  Already registered?
-                  <span className="auth-link" onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('login'); }}>
-                    Log In
-                  </span>
-                </>
-              )}
-              <div style={{ marginTop: '1.25rem' }}>
-                <span className="auth-link" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }} onClick={() => setCurrentView('landing')}>
-                  ← Back to Home
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <AuthView
+          currentView={currentView}
+          setCurrentView={setCurrentView}
+          authForm={authForm}
+          setAuthForm={setAuthForm}
+          authError={authError}
+          setAuthError={setAuthError}
+          authLoading={authLoading}
+          handleAuthSubmit={handleAuthSubmit}
+          isApiCalling={isApiCalling}
+        />
       )}
 
       {currentView === 'dashboard' && (
         <main className="main-content">
-          {/* Difficulty stats panel */}
-          <section className="stats-dashboard">
-            <div className="stat-progress-card difficulty-easy">
-              <div className="card-top">
-                <span className="card-title">Easy Difficulty</span>
-                <span className="card-stats">{stats.difficulty.Easy.solved} / {stats.difficulty.Easy.total}</span>
-              </div>
-              <div className="progress-bar-bg">
-                <div
-                  className="progress-bar-fill"
-                  style={{ width: `${stats.difficulty.Easy.total > 0 ? (stats.difficulty.Easy.solved / stats.difficulty.Easy.total) * 100 : 0}%` }}
-                ></div>
-              </div>
-            </div>
+          {/* Difficulty Stats panel */}
+          <HeroStats stats={stats} />
 
-            <div className="stat-progress-card difficulty-medium">
-              <div className="card-top">
-                <span className="card-title">Medium Difficulty</span>
-                <span className="card-stats">{stats.difficulty.Medium.solved} / {stats.difficulty.Medium.total}</span>
-              </div>
-              <div className="progress-bar-bg">
-                <div
-                  className="progress-bar-fill"
-                  style={{ width: `${stats.difficulty.Medium.total > 0 ? (stats.difficulty.Medium.solved / stats.difficulty.Medium.total) * 100 : 0}%` }}
-                ></div>
-              </div>
-            </div>
-
-            <div className="stat-progress-card difficulty-hard">
-              <div className="card-top">
-                <span className="card-title">Hard Difficulty</span>
-                <span className="card-stats">{stats.difficulty.Hard.solved} / {stats.difficulty.Hard.total}</span>
-              </div>
-              <div className="progress-bar-bg">
-                <div
-                  className="progress-bar-fill"
-                  style={{ width: `${stats.difficulty.Hard.total > 0 ? (stats.difficulty.Hard.solved / stats.difficulty.Hard.total) * 100 : 0}%` }}
-                ></div>
-              </div>
-            </div>
-          </section>
-
-          {/* Search Bar Row */}
-          <div className="search-section">
-            <div className="search-wrapper">
-              <Search className="search-icon" size={18} />
-              <input
-                type="text"
-                placeholder="Search question name or topic..."
-                value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-              />
-            </div>
-          </div>
-
-          {/* Toolbar & Filters */}
-          <section className="board-toolbar">
-            <div className="filter-options">
-              <div className="filter-left-group">
-                {/* View Toggle Mode */}
-                <div className="view-toggle-buttons">
-                  <button
-                    className={`btn-toggle ${viewMode === 'table' ? 'active' : ''}`}
-                    onClick={() => { setViewMode('table'); setActiveFolder(null); }}
-                    title="List View"
-                    disabled={isApiCalling}
-                  >
-                    <List size={14} />
-                    <span>List</span>
-                  </button>
-                  <button
-                    className={`btn-toggle ${viewMode === 'folder' ? 'active' : ''}`}
-                    onClick={() => { setViewMode('folder'); setActiveFolder(null); }}
-                    title="Folder View"
-                    disabled={isApiCalling}
-                  >
-                    <Folder size={14} />
-                    <span>Folders</span>
-                  </button>
-                </div>
-
-                {viewMode !== 'folder' && (
-                  <select
-                    value={filters.topic}
-                    onChange={(e) => setFilters(prev => ({ ...prev, topic: e.target.value }))}
-                    className="custom-select"
-                  >
-                    <option value="all">All Topics</option>
-                    {stats.topicsList.map(topic => (
-                      <option key={topic} value={topic}>{topic}</option>
-                    ))}
-                  </select>
-                )}
-
-                <select
-                  value={filters.difficulty}
-                  onChange={(e) => setFilters(prev => ({ ...prev, difficulty: e.target.value }))}
-                  className="custom-select"
-                >
-                  <option value="all">All Difficulties</option>
-                  <option value="Easy">Easy</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Hard">Hard</option>
-                </select>
-
-                <select
-                  value={filters.status}
-                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                  className="custom-select"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="solved">Solved</option>
-                  <option value="unsolved">Unsolved</option>
-                </select>
-                <select
-                  value={filters.sort}
-                  onChange={(e) => setFilters(prev => ({ ...prev, sort: e.target.value }))}
-                  className="custom-select"
-                >
-                  <option value="none">Default Order</option>
-                  <option value="time-asc">Time: Low to High</option>
-                  <option value="time-desc">Time: High to Low</option>
-                  <option value="rev-desc">Revisions: High to Low</option>
-                  <option value="rev-asc">Revisions: Low to High</option>
-                </select>
-              </div>
-
-              <div className="filter-right-group">
-                <button className="btn btn-primary" onClick={() => setIsAddModalOpen(true)} disabled={isApiCalling}>
-                  <PlusCircle className="mini-icon" size={16} /> Add Question
-                </button>
-
-                <button className="btn btn-secondary text-danger-hover" onClick={() => setIsResetModalOpen(true)} disabled={isApiCalling}>
-                  Reset Progress
-                </button>
-              </div>
-            </div>
-          </section>
+          {/* Search Bar & Toolbar */}
+          <FilterToolbar
+            filters={filters}
+            setFilters={setFilters}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            setActiveFolder={setActiveFolder}
+            topicsList={stats.topicsList}
+            setIsAddModalOpen={setIsAddModalOpen}
+            setIsResetModalOpen={setIsResetModalOpen}
+            isApiCalling={isApiCalling}
+          />
 
           {/* Board View */}
           <section className="topics-grid">
@@ -983,486 +659,68 @@ function App() {
                 <p>Start curating your personal DSA roadmap by clicking the "Add Question" button above.</p>
               </div>
             ) : viewMode === 'folder' && !activeFolder ? (
-              /* Render Folders Grid */
-              foldersData.length === 0 ? (
-                <div className="empty-state">
-                  <FolderOpen className="empty-state-icon" size={48} />
-                  <h3>Your DSA revision sheet is empty</h3>
-                  <p>Start curating your personal DSA roadmap by clicking the "Add Question" button above.</p>
-                </div>
-              ) : (
-                <div className="folders-grid">
-                  {foldersData.map(folder => {
-                    const percent = folder.total > 0 ? Math.round((folder.solved / folder.total) * 100) : 0;
-                    return (
-                      <div key={folder.name} className="folder-card" onClick={() => setActiveFolder(folder.name)}>
-                        <div className="folder-card-glow"></div>
-                        <div className="folder-card-header">
-                          <div className="folder-icon-wrapper">
-                            <Folder size={32} className="folder-icon" />
-                          </div>
-                          <span className="folder-badge">{folder.total} Qs</span>
-                        </div>
-                        <div className="folder-card-content">
-                          <h3 className="folder-title" title={folder.name}>{folder.name}</h3>
-                          <div className="folder-stats">
-                            <span className="folder-stat-text">{folder.solved}/{folder.total} Solved</span>
-                            <span className="folder-stat-percent">{percent}%</span>
-                          </div>
-                          <div className="folder-progress-bar">
-                            <div className="folder-progress-fill" style={{ width: `${percent}%` }}></div>
-                          </div>
-                          <div className="folder-difficulty-distribution">
-                            {folder.easy > 0 && <span className="dist-badge easy">{folder.easy} Easy</span>}
-                            {folder.medium > 0 && <span className="dist-badge medium">{folder.medium} Med</span>}
-                            {folder.hard > 0 && <span className="dist-badge hard">{folder.hard} Hard</span>}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )
+              <FoldersGrid foldersData={foldersData} setActiveFolder={setActiveFolder} />
             ) : (
-              /* Render Table View (for viewMode === 'table' or activeFolder is set) */
-              <div>
-                {viewMode === 'folder' && activeFolder && (
-                  <div className="folder-detail-header">
-                    <button className="btn btn-secondary btn-back" onClick={() => setActiveFolder(null)} disabled={isApiCalling}>
-                      <ArrowLeft size={16} /> Back to Folders
-                    </button>
-                    <div className="folder-path">
-                      <span className="path-parent" onClick={() => setActiveFolder(null)}>Folders</span>
-                      <span className="path-separator">/</span>
-                      <span className="path-current">{activeFolder}</span>
-                    </div>
-                  </div>
-                )}
-
-                {questionsToRender.length === 0 ? (
-                  <div className="empty-state">
-                    <FolderOpen className="empty-state-icon" size={48} />
-                    <h3>No questions found</h3>
-                    <p>No questions match your current search or filter criteria in this view.</p>
-                    <button className="btn btn-secondary" onClick={() => {
-                      setFilters({ search: '', topic: 'all', difficulty: 'all', status: 'all', sort: 'none' });
-                    }} style={{ marginTop: '1rem' }} disabled={isApiCalling}>
-                      Clear Filters
-                    </button>
-                  </div>
-                ) : (
-                  <div className="questions-table-container">
-                    <div className="questions-table-header">
-                      <div className="col-status">Status</div>
-                      <div className="col-title">Title</div>
-                      <div className="col-topic">Topic</div>
-                      <div className="col-difficulty">Difficulty</div>
-                      <div className="col-timetaken">Time Taken</div>
-                      <div className="col-youtube">YouTube</div>
-                      <div className="col-revisions">Revisions</div>
-                      <div className="col-action">Action</div>
-                    </div>
-                    <div className="questions-table-body">
-                      {questionsToRender.map((q) => {
-                        const qId = q._id || q.id;
-                        return (
-                          <div key={qId} className={`question-row difficulty-${q.difficulty.toLowerCase()} ${q.done ? 'solved' : ''}`}>
-                            <div className="col-status">
-                              <button className="btn-done-toggle" onClick={() => toggleQuestionStatus(qId)} disabled={isApiCalling}>
-                                <Check size={12} strokeWidth={4} />
-                              </button>
-                            </div>
-
-                            <div className="col-title">
-                              <a
-                                href={q.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="question-link"
-                                title={`Solve '${q.name}' on LeetCode`}
-                              >
-                                <span>{q.name}</span>
-                                <ExternalLink className="question-link-icon" size={14} />
-                              </a>
-                            </div>
-
-                            <div className="col-topic">
-                              <span className="topic-badge">{q.topic}</span>
-                            </div>
-
-                            <div className="col-difficulty">
-                              <span className={`diff-badge ${q.difficulty.toLowerCase()}`}>{q.difficulty}</span>
-                            </div>
-
-                            <div className="col-timetaken">
-                              <span className="timetaken-badge">{q.timeTaken ? `${Math.round(q.timeTaken * 100) / 100} min` : 'N/A'}</span>
-                            </div>
-
-                            <div className="col-youtube">
-                              {q.youtube ? (
-                                <a
-                                  href={q.youtube}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="youtube-link"
-                                  title="Watch solution on YouTube"
-                                >
-                                  <Youtube size={18} />
-                                </a>
-                              ) : "N/A"}
-                            </div>
-
-                            <div className="col-revisions">
-                              <div className="revisions-counter">
-                                <button
-                                  className="btn-counter btn-counter-minus"
-                                  onClick={() => handleUpdateRevisions(qId, (q.revisions || 0) - 1)}
-                                  disabled={((q.revisions || 0) <= 0) || isApiCalling}
-                                  title="Decrement revisions"
-                                >
-                                  -
-                                </button>
-                                <span className="revisions-count">{q.revisions || 0}</span>
-                                <button
-                                  className="btn-counter btn-counter-plus"
-                                  onClick={() => handleUpdateRevisions(qId, (q.revisions || 0) + 1)}
-                                  title="Increment revisions"
-                                  disabled={isApiCalling}
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="col-action">
-                              <button className="btn-edit" title="Edit this question" onClick={() => handleEditClick(q)} disabled={isApiCalling}>
-                                <Edit size={16} />
-                              </button>
-                              <button className="btn-delete" title="Delete this question" onClick={() => handleDeleteClick(q)} disabled={isApiCalling}>
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <QuestionTable
+                questionsToRender={questionsToRender}
+                viewMode={viewMode}
+                activeFolder={activeFolder}
+                setActiveFolder={setActiveFolder}
+                setFilters={setFilters}
+                toggleQuestionStatus={toggleQuestionStatus}
+                openNotesModal={openNotesModal}
+                handleUpdateRevisions={handleUpdateRevisions}
+                handleEditClick={handleEditClick}
+                handleDeleteClick={handleDeleteClick}
+                isApiCalling={isApiCalling}
+              />
             )}
           </section>
         </main>
       )}
 
       {/* Footer */}
-      <footer className="main-footer">
-        <div className="footer-content">
-          <p className="footer-text">
-            Thank you for visiting... Made by&nbsp;<span className="font-semibold">Gopal Kundu</span>
-          </p>
-          <a
-            className="footer-linkedin-link"
-            href="https://www.linkedin.com/in/gopalcodes/"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Connect with Gopal Kundu on LinkedIn"
-          >
-            <Linkedin className="linkedin-icon" size={20} />
-          </a>
-        </div>
-      </footer>
+      <Footer />
 
-      {/* Add Modal */}
-      {isAddModalOpen && (
-        <div className="modal-overlay active">
-          <div className="modal-card">
-            <div className="modal-header">
-              <div className="modal-title-group">
-                <PlusCircle className="modal-header-icon text-accent" size={24} />
-                <h2>Add New Question</h2>
-              </div>
-              <button className="modal-close btn-close-modal" onClick={() => setIsAddModalOpen(false)} disabled={isApiCalling}>
-                <X size={18} />
-              </button>
-            </div>
-            <form onSubmit={handleAddSubmit}>
-              <div className="modal-body">
-                <div className="modal-form-grid">
-                  <div className="form-group grid-full">
-                    <label htmlFor="input-name" className="form-label-with-icon">
-                      <Code size={14} />
-                      <span>Question Title</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="input-name"
-                      placeholder="e.g., Two Sum, Reverse Linked List"
-                      required
-                      value={addForm.name}
-                      onChange={(e) => setAddForm(prev => ({ ...prev, name: e.target.value }))}
-                    />
-                  </div>
+      {/* Modals */}
+      <NotesModal
+        isNoteModalOpen={isNoteModalOpen}
+        setIsNoteModalOpen={setIsNoteModalOpen}
+        noteModalData={noteModalData}
+        setNoteModalData={setNoteModalData}
+        handleSaveNotes={handleSaveNotes}
+        isApiCalling={isApiCalling}
+      />
 
-                  <div className="form-group">
-                    <label htmlFor="input-topic" className="form-label-with-icon">
-                      <FolderOpen size={14} />
-                      <span>Topic Name</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="input-topic"
-                      placeholder="e.g., Arrays & Hashing..."
-                      required
-                      list="existing-topics-react"
-                      value={addForm.topic}
-                      onChange={(e) => setAddForm(prev => ({ ...prev, topic: e.target.value }))}
-                    />
-                    <datalist id="existing-topics-react">
-                      {stats.topicsList.map(topic => (
-                        <option key={topic} value={topic} />
-                      ))}
-                    </datalist>
-                    <span className="input-helper">Select or type a new topic.</span>
-                  </div>
+      <AddQuestionModal
+        isAddModalOpen={isAddModalOpen}
+        setIsAddModalOpen={setIsAddModalOpen}
+        addForm={addForm}
+        setAddForm={setAddForm}
+        handleAddSubmit={handleAddSubmit}
+        topicsList={stats.topicsList}
+        isApiCalling={isApiCalling}
+      />
 
-                  <div className="form-group">
-                    <label htmlFor="input-difficulty" className="form-label-with-icon">
-                      <Award size={14} />
-                      <span>Difficulty</span>
-                    </label>
-                    <select
-                      id="input-difficulty"
-                      className="custom-select"
-                      required
-                      value={addForm.difficulty}
-                      onChange={(e) => setAddForm(prev => ({ ...prev, difficulty: e.target.value }))}
-                    >
-                      <option value="Easy">Easy</option>
-                      <option value="Medium">Medium</option>
-                      <option value="Hard">Hard</option>
-                    </select>
-                  </div>
+      <EditQuestionModal
+        isEditModalOpen={isEditModalOpen}
+        setIsEditModalOpen={setIsEditModalOpen}
+        editForm={editForm}
+        setEditForm={setEditForm}
+        handleEditSubmit={handleEditSubmit}
+        topicsList={stats.topicsList}
+        isApiCalling={isApiCalling}
+      />
 
-                  <div className="form-group grid-full">
-                    <label htmlFor="input-link" className="form-label-with-icon">
-                      <ExternalLink size={14} />
-                      <span>Question Link (URL)</span>
-                    </label>
-                    <input
-                      type="url"
-                      id="input-link"
-                      placeholder="https://leetcode.com/problems/..."
-                      required
-                      value={addForm.link}
-                      onChange={(e) => setAddForm(prev => ({ ...prev, link: e.target.value }))}
-                    />
-                  </div>
+      <ResetModal
+        isResetModalOpen={isResetModalOpen}
+        setIsResetModalOpen={setIsResetModalOpen}
+        handleResetConfirm={handleResetConfirm}
+        isApiCalling={isApiCalling}
+      />
 
-                  <div className="form-group grid-full">
-                    <label htmlFor="input-youtube" className="form-label-with-icon">
-                      <Youtube size={14} className="youtube-icon-red" />
-                      <span>YouTube Link</span>
-                    </label>
-                    <input
-                      type="url"
-                      id="input-youtube"
-                      placeholder="https://www.youtube.com/watch?v=..."
-                      value={addForm.youtube}
-                      onChange={(e) => setAddForm(prev => ({ ...prev, youtube: e.target.value }))}
-                    />
-                  </div>
-
-                  <div className="form-group grid-full">
-                    <label htmlFor="input-timetaken" className="form-label-with-icon">
-                      <Clock size={14} />
-                      <span>Time Taken (in minutes)</span>
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      id="input-timetaken"
-                      placeholder="e.g., 25 or 12.5"
-                      value={addForm.timeTaken}
-                      onChange={(e) => setAddForm(prev => ({ ...prev, timeTaken: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setIsAddModalOpen(false)} disabled={isApiCalling}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={isApiCalling}>Save Question</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Modal */}
-      {isEditModalOpen && (
-        <div className="modal-overlay active">
-          <div className="modal-card">
-            <div className="modal-header">
-              <div className="modal-title-group">
-                <Edit className="modal-header-icon text-accent" size={24} />
-                <h2>Edit Question</h2>
-              </div>
-              <button className="modal-close btn-close-modal" onClick={() => setIsEditModalOpen(false)} disabled={isApiCalling}>
-                <X size={18} />
-              </button>
-            </div>
-            <form onSubmit={handleEditSubmit}>
-              <div className="modal-body">
-                <div className="modal-form-grid">
-                  <div className="form-group grid-full">
-                    <label htmlFor="edit-name" className="form-label-with-icon">
-                      <Code size={14} />
-                      <span>Question Title</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="edit-name"
-                      placeholder="e.g., Two Sum, Reverse Linked List"
-                      required
-                      value={editForm.name}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="edit-topic" className="form-label-with-icon">
-                      <FolderOpen size={14} />
-                      <span>Topic Name</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="edit-topic"
-                      placeholder="e.g., Arrays & Hashing..."
-                      required
-                      list="existing-topics-react"
-                      value={editForm.topic}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, topic: e.target.value }))}
-                    />
-                    <span className="input-helper">Select or type a new topic.</span>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="edit-difficulty" className="form-label-with-icon">
-                      <Award size={14} />
-                      <span>Difficulty</span>
-                    </label>
-                    <select
-                      id="edit-difficulty"
-                      className="custom-select"
-                      required
-                      value={editForm.difficulty}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, difficulty: e.target.value }))}
-                    >
-                      <option value="Easy">Easy</option>
-                      <option value="Medium">Medium</option>
-                      <option value="Hard">Hard</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group grid-full">
-                    <label htmlFor="edit-link" className="form-label-with-icon">
-                      <ExternalLink size={14} />
-                      <span>Question Link (URL)</span>
-                    </label>
-                    <input
-                      type="url"
-                      id="edit-link"
-                      placeholder="https://leetcode.com/problems/..."
-                      required
-                      value={editForm.link}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, link: e.target.value }))}
-                    />
-                  </div>
-
-                  <div className="form-group grid-full">
-                    <label htmlFor="edit-youtube" className="form-label-with-icon">
-                      <Youtube size={14} className="youtube-icon-red" />
-                      <span>YouTube Link (Optional)</span>
-                    </label>
-                    <input
-                      type="url"
-                      id="edit-youtube"
-                      placeholder="https://www.youtube.com/watch?v=..."
-                      value={editForm.youtube}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, youtube: e.target.value }))}
-                    />
-                  </div>
-
-                  <div className="form-group grid-full">
-                    <label htmlFor="edit-timetaken" className="form-label-with-icon">
-                      <Clock size={14} />
-                      <span>Time Taken (in minutes)</span>
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      id="edit-timetaken"
-                      placeholder="e.g., 25 or 12.5"
-                      value={editForm.timeTaken}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, timeTaken: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setIsEditModalOpen(false)} disabled={isApiCalling}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={isApiCalling}>Update Question</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Reset Confirmation Modal */}
-      {isResetModalOpen && (
-        <div className="modal-overlay active">
-          <div className="modal-card modal-confirm-card">
-            <div className="modal-header">
-              <div className="modal-title-group">
-                <AlertTriangle className="modal-header-icon text-danger" size={24} />
-                <h2>Reset All Progress?</h2>
-              </div>
-              <button className="modal-close btn-close-modal" onClick={() => setIsResetModalOpen(false)} disabled={isApiCalling}>
-                <X size={18} />
-              </button>
-            </div>
-            <div className="modal-body confirm-body">
-              <p className="confirm-main-text">This action will reset your progress back to unsolved for all questions in your sheet.</p>
-              <div className="warning-box">
-                <AlertTriangle size={20} className="warning-box-icon" />
-                <p className="warning-text">Warning: This action cannot be undone and all revision counts will be reset.</p>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setIsResetModalOpen(false)} disabled={isApiCalling}>Cancel</button>
-              <button type="button" className="btn btn-danger" onClick={handleResetConfirm} disabled={isApiCalling}>Yes, Reset Progress</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notifications Container */}
-      <div className="toasts-container">
-        {toasts.map(t => (
-          <div key={t.id} className={`toast-card toast-${t.type}`}>
-            <div className="toast-icon">
-              {t.type === 'success' && <Check size={14} />}
-              {t.type === 'info' && <ExternalLink size={14} />}
-              {t.type === 'warning' && <AlertTriangle size={14} />}
-            </div>
-            <div className="toast-message">{t.message}</div>
-            <button className="toast-close" onClick={() => setToasts(prev => prev.filter(item => item.id !== t.id))} disabled={isApiCalling}>
-              <X size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} setToasts={setToasts} isApiCalling={isApiCalling} />
     </div>
   );
 }
