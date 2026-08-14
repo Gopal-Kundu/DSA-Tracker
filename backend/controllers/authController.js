@@ -1,11 +1,10 @@
 const User = require('../models/User');
-const Question = require('../models/Question');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'leetcode_tracker_secret_key_123';
+const JWT_SECRET = process.env.JWT_SECRET;
 
-exports.signup = async (req, res) => {
+const signup = async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -36,22 +35,19 @@ exports.signup = async (req, res) => {
 
     await newUser.save();
 
-
-
     // Generate JWT
-    const token = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ id: newUser._id }, JWT_SECRET);
 
-    const isProd = process.env.NODE_ENV === 'production' || !req.get('host').includes('localhost');
+    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('token', token, {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'none' : 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      maxAge: 100 * 365 * 24 * 60 * 60 * 1000 // 100 years
     });
 
     res.status(201).json({
       success: true,
-      token,
       user: {
         id: newUser._id,
         username: newUser.username
@@ -62,7 +58,7 @@ exports.signup = async (req, res) => {
   }
 };
 
-exports.login = async (req, res) => {
+const login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -83,19 +79,18 @@ exports.login = async (req, res) => {
     }
 
     // Generate JWT
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ id: user._id }, JWT_SECRET);
 
-    const isProd = process.env.NODE_ENV === 'production' || !req.get('host').includes('localhost');
+    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('token', token, {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'none' : 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      maxAge: 100 * 365 * 24 * 60 * 60 * 1000 // 100 years
     });
 
     res.json({
       success: true,
-      token,
       user: {
         id: user._id,
         username: user.username
@@ -106,17 +101,17 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.logout = async (req, res) => {
-  const isProd = process.env.NODE_ENV === 'production' || !req.get('host').includes('localhost');
+const logout = async (req, res) => {
+  const isProduction = process.env.NODE_ENV === 'production';
   res.clearCookie('token', {
     httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? 'none' : 'lax'
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax'
   });
   res.json({ success: true, message: 'Logged out successfully' });
 };
 
-exports.getMe = async (req, res) => {
+const getMe = async (req, res) => {
   try {
     res.json({
       success: true,
@@ -129,3 +124,13 @@ exports.getMe = async (req, res) => {
     res.status(500).json({ error: 'Server error retrieving user data', details: error.message });
   }
 };
+
+module.exports = {
+  signup,
+  login,
+  logout,
+  getMe
+};
+
+
+

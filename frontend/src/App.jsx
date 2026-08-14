@@ -233,16 +233,17 @@ function App() {
 
   // Toggle solved status
   const toggleQuestionStatus = async (id) => {
-    const q = questions.find(item => item.id === id);
+    const q = questions.find(item => (item._id || item.id) === id);
     if (!q) return;
+    const qId = q._id || q.id;
 
     const newDoneState = !q.done;
 
     // Optimistic UI update
-    setQuestions(prev => prev.map(item => item.id === id ? { ...item, done: newDoneState } : item));
+    setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, done: newDoneState } : item));
 
     try {
-      const response = await customFetch(`${baseURL}/api/questions/${id}`, {
+      const response = await customFetch(`${baseURL}/api/questions/${qId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -258,13 +259,13 @@ function App() {
         }
       } else {
         // Rollback on error
-        setQuestions(prev => prev.map(item => item.id === id ? { ...item, done: !newDoneState } : item));
+        setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, done: !newDoneState } : item));
         showToast("Failed to update status on server.", "warning");
       }
     } catch (error) {
       console.error('Failed to update status on server:', error);
       // Rollback
-      setQuestions(prev => prev.map(item => item.id === id ? { ...item, done: !newDoneState } : item));
+      setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, done: !newDoneState } : item));
       showToast("Failed to update status on server.", "warning");
     }
   };
@@ -272,16 +273,17 @@ function App() {
   // Update revisions counter
   const handleUpdateRevisions = async (id, newRevisionsVal) => {
     if (newRevisionsVal < 0) return;
-    const q = questions.find(item => item.id === id);
+    const q = questions.find(item => (item._id || item.id) === id);
     if (!q) return;
+    const qId = q._id || q.id;
 
     const oldRevisions = q.revisions || 0;
 
     // Optimistic UI update
-    setQuestions(prev => prev.map(item => item.id === id ? { ...item, revisions: newRevisionsVal } : item));
+    setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, revisions: newRevisionsVal } : item));
 
     try {
-      const response = await customFetch(`${baseURL}/api/questions/${id}`, {
+      const response = await customFetch(`${baseURL}/api/questions/${qId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -293,13 +295,13 @@ function App() {
         showToast(`Updated revisions for "${q.name}" to ${newRevisionsVal}.`, "success");
       } else {
         // Rollback
-        setQuestions(prev => prev.map(item => item.id === id ? { ...item, revisions: oldRevisions } : item));
+        setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, revisions: oldRevisions } : item));
         showToast("Failed to update revisions on server.", "warning");
       }
     } catch (error) {
       console.error('Failed to update revisions:', error);
       // Rollback
-      setQuestions(prev => prev.map(item => item.id === id ? { ...item, revisions: oldRevisions } : item));
+      setQuestions(prev => prev.map(item => (item._id || item.id) === qId ? { ...item, revisions: oldRevisions } : item));
       showToast("Failed to update revisions on server.", "warning");
     }
   };
@@ -310,7 +312,6 @@ function App() {
     if (!addForm.topic.trim() || !addForm.name.trim() || !addForm.link.trim()) return;
 
     const newQuestion = {
-      id: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
       topic: addForm.topic.trim(),
       name: addForm.name.trim(),
       link: addForm.link.trim(),
@@ -330,7 +331,7 @@ function App() {
       });
       if (response.ok) {
         const responseData = await response.json();
-        setQuestions(prev => [...prev, responseData.question || newQuestion]);
+        setQuestions(prev => [...prev, responseData.question || responseData]);
         setIsAddModalOpen(false);
         setAddForm({ topic: '', name: '', link: '', difficulty: 'Medium', youtube: '' });
         showToast(`"${newQuestion.name}" added successfully!`, "success");
@@ -346,7 +347,7 @@ function App() {
   // Open edit modal and populate data
   const handleEditClick = (q) => {
     setEditForm({
-      id: q.id,
+      id: q._id || q.id,
       topic: q.topic,
       name: q.name,
       link: q.link,
@@ -379,7 +380,7 @@ function App() {
         body: JSON.stringify(updatedFields)
       });
       if (response.ok) {
-        setQuestions(prev => prev.map(item => item.id === editForm.id ? { ...item, ...updatedFields } : item));
+        setQuestions(prev => prev.map(item => (item._id || item.id) === editForm.id ? { ...item, ...updatedFields } : item));
         setIsEditModalOpen(false);
         showToast(`"${updatedFields.name}" updated successfully!`, "success");
       } else {
@@ -394,18 +395,19 @@ function App() {
   // Delete question handler
   const handleDeleteClick = async (q) => {
     if (!window.confirm(`Are you sure you want to delete "${q.name}"?`)) return;
+    const qId = q._id || q.id;
 
     try {
-      const response = await customFetch(`${baseURL}/api/questions/${q.id}`, {
+      const response = await customFetch(`${baseURL}/api/questions/${qId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       if (response.ok) {
-        setQuestions(prev => prev.filter(item => item.id !== q.id));
+        setQuestions(prev => prev.filter(item => (item._id || item.id) !== qId));
         // Reset topic filter if that topic was completely deleted
-        const remainingTopics = new Set(questions.filter(item => item.id !== q.id).map(item => item.topic));
+        const remainingTopics = new Set(questions.filter(item => (item._id || item.id) !== qId).map(item => item.topic));
         if (filters.topic !== 'all' && !remainingTopics.has(filters.topic)) {
           setFilters(prev => ({ ...prev, topic: 'all' }));
         }
@@ -475,14 +477,14 @@ function App() {
       }
 
       // Default sorting: original numeric order first, custom string keys at the end
-      const idA = parseInt(a.id, 10);
-      const idB = parseInt(b.id, 10);
+      const idA = parseInt(a._id || a.id, 10);
+      const idB = parseInt(b._id || b.id, 10);
       if (!isNaN(idA) && !isNaN(idB)) {
         return idA - idB;
       }
       if (isNaN(idA) && !isNaN(idB)) return 1;
       if (!isNaN(idA) && isNaN(idB)) return -1;
-      return a.id.localeCompare(b.id);
+      return (a._id || a.id || '').localeCompare(b._id || b.id || '');
     });
   }, [questions, filters]);
 
@@ -1037,81 +1039,84 @@ function App() {
                       <div className="col-action">Action</div>
                     </div>
                     <div className="questions-table-body">
-                      {questionsToRender.map((q) => (
-                        <div key={q.id} className={`question-row difficulty-${q.difficulty.toLowerCase()} ${q.done ? 'solved' : ''}`}>
-                          <div className="col-status">
-                            <button className="btn-done-toggle" onClick={() => toggleQuestionStatus(q.id)} disabled={isApiCalling}>
-                              <Check size={12} strokeWidth={4} />
-                            </button>
-                          </div>
+                      {questionsToRender.map((q) => {
+                        const qId = q._id || q.id;
+                        return (
+                          <div key={qId} className={`question-row difficulty-${q.difficulty.toLowerCase()} ${q.done ? 'solved' : ''}`}>
+                            <div className="col-status">
+                              <button className="btn-done-toggle" onClick={() => toggleQuestionStatus(qId)} disabled={isApiCalling}>
+                                <Check size={12} strokeWidth={4} />
+                              </button>
+                            </div>
 
-                          <div className="col-title">
-                            <a
-                              href={q.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="question-link"
-                              title={`Solve '${q.name}' on LeetCode`}
-                            >
-                              <span>{q.name}</span>
-                              <ExternalLink className="question-link-icon" size={14} />
-                            </a>
-                          </div>
-
-                          <div className="col-topic">
-                            <span className="topic-badge">{q.topic}</span>
-                          </div>
-
-                          <div className="col-difficulty">
-                            <span className={`diff-badge ${q.difficulty.toLowerCase()}`}>{q.difficulty}</span>
-                          </div>
-
-                          <div className="col-youtube">
-                            {q.youtube ? (
+                            <div className="col-title">
                               <a
-                                href={q.youtube}
+                                href={q.link}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="youtube-link"
-                                title="Watch solution on YouTube"
+                                className="question-link"
+                                title={`Solve '${q.name}' on LeetCode`}
                               >
-                                <Youtube size={18} />
+                                <span>{q.name}</span>
+                                <ExternalLink className="question-link-icon" size={14} />
                               </a>
-                            ) : "N/A"}
-                          </div>
+                            </div>
 
-                          <div className="col-revisions">
-                            <div className="revisions-counter">
-                              <button
-                                className="btn-counter btn-counter-minus"
-                                onClick={() => handleUpdateRevisions(q.id, (q.revisions || 0) - 1)}
-                                disabled={((q.revisions || 0) <= 0) || isApiCalling}
-                                title="Decrement revisions"
-                              >
-                                -
+                            <div className="col-topic">
+                              <span className="topic-badge">{q.topic}</span>
+                            </div>
+
+                            <div className="col-difficulty">
+                              <span className={`diff-badge ${q.difficulty.toLowerCase()}`}>{q.difficulty}</span>
+                            </div>
+
+                            <div className="col-youtube">
+                              {q.youtube ? (
+                                <a
+                                  href={q.youtube}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="youtube-link"
+                                  title="Watch solution on YouTube"
+                                >
+                                  <Youtube size={18} />
+                                </a>
+                              ) : "N/A"}
+                            </div>
+
+                            <div className="col-revisions">
+                              <div className="revisions-counter">
+                                <button
+                                  className="btn-counter btn-counter-minus"
+                                  onClick={() => handleUpdateRevisions(qId, (q.revisions || 0) - 1)}
+                                  disabled={((q.revisions || 0) <= 0) || isApiCalling}
+                                  title="Decrement revisions"
+                                >
+                                  -
+                                </button>
+                                <span className="revisions-count">{q.revisions || 0}</span>
+                                <button
+                                  className="btn-counter btn-counter-plus"
+                                  onClick={() => handleUpdateRevisions(qId, (q.revisions || 0) + 1)}
+                                  title="Increment revisions"
+                                  disabled={isApiCalling}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="col-action">
+                              <button className="btn-edit" title="Edit this question" onClick={() => handleEditClick(q)} disabled={isApiCalling}>
+                                <Edit size={16} />
                               </button>
-                              <span className="revisions-count">{q.revisions || 0}</span>
-                              <button
-                                className="btn-counter btn-counter-plus"
-                                onClick={() => handleUpdateRevisions(q.id, (q.revisions || 0) + 1)}
-                                title="Increment revisions"
-                                disabled={isApiCalling}
-                              >
-                                +
+                              <button className="btn-delete" title="Delete this question" onClick={() => handleDeleteClick(q)} disabled={isApiCalling}>
+                                <Trash2 size={16} />
                               </button>
                             </div>
                           </div>
-
-                          <div className="col-action">
-                            <button className="btn-edit" title="Edit this question" onClick={() => handleEditClick(q)} disabled={isApiCalling}>
-                              <Edit size={16} />
-                            </button>
-                            <button className="btn-delete" title="Delete this question" onClick={() => handleDeleteClick(q)} disabled={isApiCalling}>
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

@@ -12,6 +12,9 @@ router.get('/', questionController.getAllQuestions);
 // POST /api/questions - Add a new question
 router.post('/', questionController.addQuestion);
 
+// POST /api/questions/bulk - Bulk upload questions
+router.post('/bulk', questionController.bulkAddQuestions);
+
 // POST /api/questions/reset - Reset progress of all questions
 router.post('/reset', questionController.resetProgress);
 

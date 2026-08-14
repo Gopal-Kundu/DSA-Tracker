@@ -2,7 +2,7 @@ const Question = require('../models/Question');
 const User = require('../models/User');
 
 // Get all questions for the logged-in user
-exports.getAllQuestions = async (req, res) => {
+const getAllQuestions = async (req, res) => {
   try {
     const questions = await Question.find({ user: req.user._id });
     res.json(questions);
@@ -12,20 +12,11 @@ exports.getAllQuestions = async (req, res) => {
 };
 
 // Add a new question for the logged-in user
-exports.addQuestion = async (req, res) => {
+const addQuestion = async (req, res) => {
   try {
-    const { id, topic, name, link, difficulty, youtube, done, revisions } = req.body;
-    
-    const finalId = id || 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    
-    // Check if question ID already exists for THIS user
-    const exists = await Question.findOne({ id: finalId.toString(), user: req.user._id });
-    if (exists) {
-      return res.status(400).json({ error: 'Question ID already exists for this user' });
-    }
+    const { topic, name, link, difficulty, youtube, done, revisions } = req.body;
 
     const newQuestion = new Question({
-      id: finalId.toString(),
       topic,
       name,
       link,
@@ -47,12 +38,12 @@ exports.addQuestion = async (req, res) => {
   }
 };
 
-// Update question details or status (scoped to the logged-in user)
-exports.updateQuestion = async (req, res) => {
+// Update question details or status
+const updateQuestion = async (req, res) => {
   try {
     const { id } = req.params;
     const updatedQuestion = await Question.findOneAndUpdate(
-      { id: id.toString(), user: req.user._id },
+      { _id: id, user: req.user._id },
       { $set: req.body },
       { new: true, runValidators: true }
     );
@@ -67,11 +58,11 @@ exports.updateQuestion = async (req, res) => {
   }
 };
 
-// Delete a question (scoped to the logged-in user)
-exports.deleteQuestion = async (req, res) => {
+// Delete a question
+const deleteQuestion = async (req, res) => {
   try {
     const { id } = req.params;
-    const deletedQuestion = await Question.findOneAndDelete({ id: id.toString(), user: req.user._id });
+    const deletedQuestion = await Question.findOneAndDelete({ _id: id, user: req.user._id });
 
     if (!deletedQuestion) {
       return res.status(404).json({ error: 'Question not found or unauthorized' });
@@ -86,8 +77,8 @@ exports.deleteQuestion = async (req, res) => {
   }
 };
 
-// Reset progress for the logged-in user (set all done status to false)
-exports.resetProgress = async (req, res) => {
+// Reset progress for the logged-in user
+const resetProgress = async (req, res) => {
   try {
     await Question.updateMany({ user: req.user._id }, { $set: { done: false } });
     res.json({ success: true, message: 'Progress reset successfully' });
@@ -95,3 +86,65 @@ exports.resetProgress = async (req, res) => {
     res.status(500).json({ error: 'Failed to reset progress', details: error.message });
   }
 };
+
+  
+// Bulk add questions for the logged-in user
+const bulkAddQuestions = async (req, res) => {
+  try {
+    const rawQuestions = Array.isArray(req.body) ? req.body : req.body.questions;
+
+    if (!Array.isArray(rawQuestions) || rawQuestions.length === 0) {
+      return res.status(400).json({ error: 'Please provide a non-empty array of questions' });
+    }
+
+    const formattedQuestions = rawQuestions.map(q => ({
+      topic: q.topic,
+      name: q.name,
+      link: q.link,
+      difficulty: q.difficulty || 'Medium',
+      youtube: q.youtube || '',
+      done: typeof q.done === 'boolean' ? q.done : false,
+      revisions: typeof q.revisions === 'number' ? q.revisions : 0,
+      user: req.user._id
+    }));
+
+    let insertedQuestions;
+    try {
+      insertedQuestions = await Question.insertMany(formattedQuestions);
+    } catch (insertError) {
+      if (insertError.code === 11000 || (insertError.message && insertError.message.includes('E11000'))) {
+        await Question.collection.dropIndexes().catch(() => {});
+        insertedQuestions = await Question.insertMany(formattedQuestions);
+      } else {
+        throw insertError;
+      }
+    }
+
+    const insertedIds = insertedQuestions.map(q => q._id);
+
+    // Add references to User schema
+    await User.findByIdAndUpdate(req.user._id, {
+      $push: { questions: { $each: insertedIds } }
+    });
+
+    res.status(201).json({
+      success: true,
+      count: insertedQuestions.length,
+      questions: insertedQuestions
+    });
+  } catch (error) {
+    res.status(400).json({ error: 'Failed to bulk upload questions', details: error.message });
+  }
+};
+
+module.exports = {
+  getAllQuestions,
+  addQuestion,
+  bulkAddQuestions,
+  updateQuestion,
+  deleteQuestion,
+  resetProgress
+};
+
+
+
