@@ -14,7 +14,7 @@ const getAllQuestions = async (req, res) => {
 // Add a new question for the logged-in user
 const addQuestion = async (req, res) => {
   try {
-    const { topic, name, link, difficulty, youtube, done, revisions } = req.body;
+    const { topic, name, link, difficulty, youtube, timeTaken, done, revisions } = req.body;
 
     const newQuestion = new Question({
       topic,
@@ -22,6 +22,7 @@ const addQuestion = async (req, res) => {
       link,
       difficulty,
       youtube: youtube || '',
+      timeTaken: timeTaken || '',
       done: done || false,
       revisions: revisions || 0,
       user: req.user._id
@@ -103,6 +104,7 @@ const bulkAddQuestions = async (req, res) => {
       link: q.link,
       difficulty: q.difficulty || 'Medium',
       youtube: q.youtube || '',
+      timeTaken: q.timeTaken || '',
       done: typeof q.done === 'boolean' ? q.done : false,
       revisions: typeof q.revisions === 'number' ? q.revisions : 0,
       user: req.user._id

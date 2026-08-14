@@ -22,7 +22,9 @@ import {
   Folder,
   List,
   ArrowLeft,
-  Youtube
+  Youtube,
+  Clock,
+  Linkedin
 } from 'lucide-react';
 import './App.css';
 import { baseURL } from './config';
@@ -77,7 +79,8 @@ function App() {
     name: '',
     link: '',
     difficulty: 'Medium',
-    youtube: ''
+    youtube: '',
+    timeTaken: ''
   });
 
   const [editForm, setEditForm] = useState({
@@ -86,7 +89,8 @@ function App() {
     name: '',
     link: '',
     difficulty: 'Medium',
-    youtube: ''
+    youtube: '',
+    timeTaken: ''
   });
 
   // Toast Notification State
@@ -317,6 +321,7 @@ function App() {
       link: addForm.link.trim(),
       difficulty: addForm.difficulty,
       youtube: addForm.youtube.trim(),
+      timeTaken: addForm.timeTaken.trim(),
       done: false
     };
 
@@ -333,7 +338,7 @@ function App() {
         const responseData = await response.json();
         setQuestions(prev => [...prev, responseData.question || responseData]);
         setIsAddModalOpen(false);
-        setAddForm({ topic: '', name: '', link: '', difficulty: 'Medium', youtube: '' });
+        setAddForm({ topic: '', name: '', link: '', difficulty: 'Medium', youtube: '', timeTaken: '' });
         showToast(`"${newQuestion.name}" added successfully!`, "success");
       } else {
         showToast("Failed to add question.", "warning");
@@ -352,7 +357,8 @@ function App() {
       name: q.name,
       link: q.link,
       difficulty: q.difficulty,
-      youtube: q.youtube || ''
+      youtube: q.youtube || '',
+      timeTaken: q.timeTaken || ''
     });
     setIsEditModalOpen(true);
   };
@@ -367,7 +373,8 @@ function App() {
       name: editForm.name.trim(),
       link: editForm.link.trim(),
       difficulty: editForm.difficulty,
-      youtube: editForm.youtube.trim()
+      youtube: editForm.youtube.trim(),
+      timeTaken: editForm.timeTaken.trim()
     };
 
     try {
@@ -1034,6 +1041,7 @@ function App() {
                       <div className="col-title">Title</div>
                       <div className="col-topic">Topic</div>
                       <div className="col-difficulty">Difficulty</div>
+                      <div className="col-timetaken">Time Taken</div>
                       <div className="col-youtube">YouTube</div>
                       <div className="col-revisions">Revisions</div>
                       <div className="col-action">Action</div>
@@ -1068,6 +1076,10 @@ function App() {
 
                             <div className="col-difficulty">
                               <span className={`diff-badge ${q.difficulty.toLowerCase()}`}>{q.difficulty}</span>
+                            </div>
+
+                            <div className="col-timetaken">
+                              <span className="timetaken-badge">{q.timeTaken || 'N/A'}</span>
                             </div>
 
                             <div className="col-youtube">
@@ -1128,8 +1140,19 @@ function App() {
 
       {/* Footer */}
       <footer className="main-footer">
-        <div className="footer-container" style={{ justifyContent: 'center' }}>
-          <p>Made by Gopal Kundu</p>
+        <div className="footer-content">
+          <p className="footer-text">
+            Thank you for visiting... Made by&nbsp;<span className="font-semibold">Gopal Kundu</span>
+          </p>
+          <a
+            className="footer-linkedin-link"
+            href="https://www.linkedin.com/in/gopalcodes/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Connect with Gopal Kundu on LinkedIn"
+          >
+            <Linkedin className="linkedin-icon" size={20} />
+          </a>
         </div>
       </footer>
 
@@ -1230,6 +1253,20 @@ function App() {
                       placeholder="https://www.youtube.com/watch?v=..."
                       value={addForm.youtube}
                       onChange={(e) => setAddForm(prev => ({ ...prev, youtube: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="form-group grid-full">
+                    <label htmlFor="input-timetaken" className="form-label-with-icon">
+                      <Clock size={14} />
+                      <span>Time Taken in Past (Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="input-timetaken"
+                      placeholder="e.g. 25 mins, 1 hr..."
+                      value={addForm.timeTaken}
+                      onChange={(e) => setAddForm(prev => ({ ...prev, timeTaken: e.target.value }))}
                     />
                   </div>
                 </div>
@@ -1335,6 +1372,20 @@ function App() {
                       placeholder="https://www.youtube.com/watch?v=..."
                       value={editForm.youtube}
                       onChange={(e) => setEditForm(prev => ({ ...prev, youtube: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="form-group grid-full">
+                    <label htmlFor="edit-timetaken" className="form-label-with-icon">
+                      <Clock size={14} />
+                      <span>Time Taken in Past (Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="edit-timetaken"
+                      placeholder="e.g. 25 mins, 1 hr..."
+                      value={editForm.timeTaken}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, timeTaken: e.target.value }))}
                     />
                   </div>
                 </div>
