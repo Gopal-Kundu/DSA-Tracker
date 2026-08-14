@@ -107,4 +107,4 @@ const QuestionRow = ({
   );
 };
 
-export default QuestionRow;
+export default React.memo(QuestionRow);

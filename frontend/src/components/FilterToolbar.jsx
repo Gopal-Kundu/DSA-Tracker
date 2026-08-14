@@ -115,4 +115,4 @@ const FilterToolbar = ({
   );
 };
 
-export default FilterToolbar;
+export default React.memo(FilterToolbar);

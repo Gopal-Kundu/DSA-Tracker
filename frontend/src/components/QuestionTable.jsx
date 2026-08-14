@@ -79,4 +79,4 @@ const QuestionTable = ({
   );
 };
 
-export default QuestionTable;
+export default React.memo(QuestionTable);

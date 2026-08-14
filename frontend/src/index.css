@@ -58,7 +58,7 @@
   --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.9);
   --shadow-accent: 0 0 30px rgba(255, 161, 22, 0.1);
   --glass-bg: rgba(10, 10, 15, 0.7);
-  --glass-blur: blur(20px) saturate(180%);
+  --glass-blur: blur(8px);
 
   /* Radius */
   --radius-sm: 8px;
@@ -112,7 +112,7 @@ body {
   position: relative;
 }
 
-/* Ambient Cyber Glow Backgrounds */
+/* Ambient Cyber Glow Backgrounds (Hardware Accelerated) */
 body::before {
   content: '';
   position: absolute;
@@ -121,7 +121,9 @@ body::before {
   width: 50vw;
   height: 50vw;
   background: radial-gradient(circle, rgba(255, 161, 22, 0.05) 0%, transparent 70%);
-  filter: blur(120px);
+  filter: blur(60px);
+  will-change: transform;
+  transform: translateZ(0);
   z-index: -1;
   pointer-events: none;
 }
@@ -134,7 +136,9 @@ body::after {
   width: 45vw;
   height: 45vw;
   background: radial-gradient(circle, rgba(16, 185, 129, 0.03) 0%, transparent 75%);
-  filter: blur(100px);
+  filter: blur(60px);
+  will-change: transform;
+  transform: translateZ(0);
   z-index: -1;
   pointer-events: none;
 }

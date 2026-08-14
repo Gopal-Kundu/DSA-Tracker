@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
 import { FolderOpen, Loader2 } from 'lucide-react';
 import './App.css';
 import { baseURL } from './config';
@@ -41,8 +41,19 @@ function App() {
   const [activeRequests, setActiveRequests] = useState(0);
   const isApiCalling = activeRequests > 0;
 
+  // Toast Notification State
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = useCallback((message, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3500);
+  }, []);
+
   // Custom fetch helper that includes credentials (HTTP cookies)
-  const customFetch = async (url, options = {}) => {
+  const customFetch = useCallback(async (url, options = {}) => {
     setActiveRequests(prev => prev + 1);
     try {
       return await fetch(url, {
@@ -52,7 +63,7 @@ function App() {
     } finally {
       setActiveRequests(prev => Math.max(0, prev - 1));
     }
-  };
+  }, []);
 
   const [filters, setFilters] = useState({
     search: '',
@@ -93,19 +104,8 @@ function App() {
     notes: ''
   });
 
-  // Toast Notification State
-  const [toasts, setToasts] = useState([]);
-
-  const showToast = (message, type = 'success') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3500);
-  };
-
   // Fetch questions for authenticated user
-  const fetchQuestions = async () => {
+  const fetchQuestions = useCallback(async () => {
     try {
       setLoading(true);
       const response = await customFetch(`${baseURL}/api/questions`);
@@ -124,10 +124,10 @@ function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [customFetch, showToast]);
 
   // Verify session cookie on mount
-  const checkAuthStatus = async () => {
+  const checkAuthStatus = useCallback(async () => {
     try {
       setLoading(true);
       const response = await customFetch(`${baseURL}/api/auth/me`);
@@ -150,14 +150,14 @@ function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [customFetch, fetchQuestions]);
 
   useEffect(() => {
     checkAuthStatus();
-  }, []);
+  }, [checkAuthStatus]);
 
   // Auth Handlers
-  const handleAuthSubmit = async (e, type) => {
+  const handleAuthSubmit = useCallback(async (e, type) => {
     e.preventDefault();
     setAuthError('');
 
@@ -202,9 +202,9 @@ function App() {
     } finally {
       setAuthLoading(false);
     }
-  };
+  }, [authForm, customFetch, fetchQuestions, showToast]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       await customFetch(`${baseURL}/api/auth/logout`, { method: 'POST' });
     } catch (err) {
@@ -217,7 +217,7 @@ function App() {
       setIsMobileMenuOpen(false);
       showToast("Logged out successfully.", "info");
     }
-  };
+  }, [customFetch, showToast]);
 
   // Compute stats reactively
   const stats = useMemo(() => {
@@ -257,13 +257,16 @@ function App() {
     return Array.from(set).sort();
   }, [questions]);
 
+  // Non-blocking deferred search for zero-lag typing
+  const deferredSearch = useDeferredValue(filters.search);
+
   // Filtered & Sorted questions logic
   const filteredQuestions = useMemo(() => {
     let result = [...questions];
 
     // Apply Search Filter
-    if (filters.search.trim() !== '') {
-      const q = filters.search.toLowerCase().trim();
+    if (deferredSearch.trim() !== '') {
+      const q = deferredSearch.toLowerCase().trim();
       result = result.filter(item =>
         item.name.toLowerCase().includes(q) ||
         item.topic.toLowerCase().includes(q)
@@ -298,7 +301,7 @@ function App() {
     }
 
     return result;
-  }, [questions, filters]);
+  }, [questions, deferredSearch, filters.topic, filters.difficulty, filters.status, filters.sort]);
 
   // Questions to render based on Folder selection
   const questionsToRender = useMemo(() => {
@@ -325,7 +328,7 @@ function App() {
   }, [filteredQuestions]);
 
   // Toggle question solved status
-  const toggleQuestionStatus = async (id) => {
+  const toggleQuestionStatus = useCallback(async (id) => {
     const question = questions.find(q => (q._id || q.id) === id);
     if (!question) return;
 
@@ -347,10 +350,10 @@ function App() {
       setQuestions(prev => prev.map(q => (q._id || q.id) === id ? { ...q, done: !nextDone } : q));
       showToast("Network error updating question status.", "warning");
     }
-  };
+  }, [questions, customFetch, showToast]);
 
   // Save Notes handler
-  const handleSaveNotes = async (e) => {
+  const handleSaveNotes = useCallback(async (e) => {
     e.preventDefault();
     if (!noteModalData.id) return;
 
@@ -374,9 +377,9 @@ function App() {
       console.error('Error saving notes:', error);
       showToast("Network error saving note.", "warning");
     }
-  };
+  }, [noteModalData, customFetch, showToast]);
 
-  const openNotesModal = (q) => {
+  const openNotesModal = useCallback((q) => {
     setNoteModalData({
       id: q._id || q.id,
       name: q.name,
@@ -384,10 +387,10 @@ function App() {
       notes: q.notes || ''
     });
     setIsNoteModalOpen(true);
-  };
+  }, []);
 
   // Add Question Submission
-  const handleAddSubmit = async (e) => {
+  const handleAddSubmit = useCallback(async (e) => {
     e.preventDefault();
     if (!addForm.name.trim() || !addForm.topic.trim() || !addForm.link.trim()) {
       showToast("Please fill in all required fields.", "warning");
@@ -433,10 +436,10 @@ function App() {
       console.error('Error adding question:', error);
       showToast("Server error adding question.", "warning");
     }
-  };
+  }, [addForm, customFetch, showToast]);
 
   // Open Edit Modal
-  const handleEditClick = (question) => {
+  const handleEditClick = useCallback((question) => {
     setEditForm({
       id: question._id || question.id,
       name: question.name,
@@ -448,10 +451,10 @@ function App() {
       notes: question.notes || ''
     });
     setIsEditModalOpen(true);
-  };
+  }, []);
 
   // Edit Question Submission
-  const handleEditSubmit = async (e) => {
+  const handleEditSubmit = useCallback(async (e) => {
     e.preventDefault();
     if (!editForm.name.trim() || !editForm.topic.trim() || !editForm.link.trim()) {
       showToast("Please fill in all required fields.", "warning");
@@ -488,10 +491,10 @@ function App() {
       console.error('Error updating question:', error);
       showToast("Server error updating question.", "warning");
     }
-  };
+  }, [editForm, customFetch, showToast]);
 
   // Delete Question
-  const handleDeleteClick = async (question) => {
+  const handleDeleteClick = useCallback(async (question) => {
     const qId = question._id || question.id;
     if (!window.confirm(`Are you sure you want to delete "${question.name}"?`)) return;
 
@@ -510,10 +513,10 @@ function App() {
       console.error('Error deleting question:', error);
       showToast("Server error deleting question.", "warning");
     }
-  };
+  }, [customFetch, showToast]);
 
   // Revisions Counter Increments / Decrements
-  const handleUpdateRevisions = async (id, nextRevisions) => {
+  const handleUpdateRevisions = useCallback(async (id, nextRevisions) => {
     if (nextRevisions < 0) return;
     setQuestions(prev => prev.map(q => (q._id || q.id) === id ? { ...q, revisions: nextRevisions } : q));
 
@@ -532,10 +535,10 @@ function App() {
     } catch (error) {
       console.error('Error updating revisions:', error);
     }
-  };
+  }, [customFetch, showToast]);
 
   // Confirm Reset Sheet Progress
-  const handleResetConfirm = async () => {
+  const handleResetConfirm = useCallback(async () => {
     try {
       const response = await customFetch(`${baseURL}/api/questions/reset`, {
         method: 'POST'
@@ -552,7 +555,7 @@ function App() {
       console.error('Error resetting progress:', error);
       showToast("Server error resetting progress.", "warning");
     }
-  };
+  }, [customFetch, showToast]);
 
   // Radial Progress Circle math
   const circleCircumference = 2 * Math.PI * 34; // r=34 => 213.628
@@ -593,7 +596,7 @@ function App() {
       />
 
       <main className="main-content">
-        {loading && !questions.length ? (
+        {loading ? (
           <div className="loading-state">
             <div className="loading-spinner-wrapper">
               <Loader2 className="spinner text-accent" size={44} />

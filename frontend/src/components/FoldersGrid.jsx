@@ -47,4 +47,4 @@ const FoldersGrid = ({ foldersData, setActiveFolder }) => {
   );
 };
 
-export default FoldersGrid;
+export default React.memo(FoldersGrid);

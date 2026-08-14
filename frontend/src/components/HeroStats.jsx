@@ -45,4 +45,4 @@ const HeroStats = ({ stats }) => {
   );
 };
 
-export default HeroStats;
+export default React.memo(HeroStats);
