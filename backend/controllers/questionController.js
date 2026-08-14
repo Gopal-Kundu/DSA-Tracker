@@ -6,11 +6,97 @@ const parseTimeTaken = (val) => {
   return isNaN(num) ? 0 : Math.round(num * 100) / 100;
 };
 
-// Get all questions for the logged-in user
-const getAllQuestions = async (req, res) => {
+// Get questions for logged-in user with API pagination, search, filter, and sorting
+const getQuestions = async (req, res) => {
   try {
-    const questions = await Question.find({ user: req.user._id });
-    res.json(questions);
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const search = req.query.search ? req.query.search.trim() : '';
+    const topic = req.query.topic || 'all';
+    const difficulty = req.query.difficulty || 'all';
+    const status = req.query.status || 'all';
+    const sort = req.query.sort || 'none';
+
+    // Base query for logged-in user
+    const query = { user: req.user._id };
+
+    // Search by question name or topic
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      query.$or = [
+        { name: searchRegex },
+        { topic: searchRegex }
+      ];
+    }
+
+    // Filter by Topic
+    if (topic !== 'all') {
+      query.topic = topic;
+    }
+
+    // Filter by Difficulty
+    if (difficulty !== 'all') {
+      query.difficulty = difficulty;
+    }
+
+    // Filter by Solved Status
+    if (status !== 'all') {
+      query.done = status === 'solved';
+    }
+
+    // Sorting: default to createdAt: -1 (newest created questions first)
+    let sortOptions = { createdAt: 1, _id: 1 };
+    if (sort === 'time-asc') sortOptions = { timeTaken: 1, createdAt: -1 };
+    else if (sort === 'time-desc') sortOptions = { timeTaken: -1, createdAt: -1 };
+    else if (sort === 'rev-asc') sortOptions = { revisions: 1, createdAt: -1 };
+    else if (sort === 'rev-desc') sortOptions = { revisions: -1, createdAt: -1 };
+    else if (sort === 'created-asc') sortOptions = { createdAt: 1, _id: 1 };
+    else sortOptions = { createdAt: 1, _id: 1 };
+
+    // Total count of matching questions
+    const totalQuestions = await Question.countDocuments(query);
+    const totalPages = Math.ceil(totalQuestions / limit) || 1;
+    const safePage = Math.min(Math.max(1, page), totalPages);
+
+    const questions = await Question.find(query)
+      .sort(sortOptions)
+      .skip((safePage - 1) * limit)
+      .limit(limit);
+
+    // Compute stats across all user questions (unfiltered)
+    const allUserQuestions = await Question.find({ user: req.user._id }).select('topic done difficulty');
+    const topicsSet = new Set(allUserQuestions.map(q => q.topic));
+
+    const stats = {
+      total: allUserQuestions.length,
+      solved: allUserQuestions.filter(q => q.done).length,
+      percentage: allUserQuestions.length > 0 ? Math.round((allUserQuestions.filter(q => q.done).length / allUserQuestions.length) * 100) : 0,
+      totalTopics: topicsSet.size,
+      difficulty: {
+        Easy: { solved: 0, total: 0 },
+        Medium: { solved: 0, total: 0 },
+        Hard: { solved: 0, total: 0 }
+      }
+    };
+
+    allUserQuestions.forEach(q => {
+      if (stats.difficulty[q.difficulty]) {
+        stats.difficulty[q.difficulty].total += 1;
+        if (q.done) stats.difficulty[q.difficulty].solved += 1;
+      }
+    });
+
+    const topicsList = Array.from(topicsSet).sort();
+
+    res.json({
+      questions,
+      totalQuestions,
+      totalPages,
+      currentPage: safePage,
+      limit,
+      stats,
+      topicsList
+    });
   } catch (error) {
     res.status(500).json({ error: 'Server error while fetching questions', details: error.message });
   }
@@ -147,7 +233,7 @@ const bulkAddQuestions = async (req, res) => {
 };
 
 module.exports = {
-  getAllQuestions,
+  getQuestions,
   addQuestion,
   bulkAddQuestions,
   updateQuestion,

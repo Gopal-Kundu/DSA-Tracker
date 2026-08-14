@@ -6,8 +6,8 @@ const auth = require('../middleware/auth');
 // Protect all question routes
 router.use(auth);
 
-// GET /api/questions - Fetch all questions for user
-router.get('/', questionController.getAllQuestions);
+// GET /api/questions - Fetch questions for user with API pagination, search, & filters
+router.get('/', questionController.getQuestions);
 
 // POST /api/questions - Add a new question
 router.post('/', questionController.addQuestion);

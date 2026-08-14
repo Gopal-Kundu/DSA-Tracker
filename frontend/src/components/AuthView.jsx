@@ -72,22 +72,22 @@ const AuthView = ({
 
         <div className="auth-footer">
           {currentView === 'login' ? (
-            <>
-              New to LeetTracker?
+            <p className="auth-switch-text">
+              New to LeetTracker?{' '}
               <span className="auth-link" onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('signup'); }}>
                 Create Account
               </span>
-            </>
+            </p>
           ) : (
-            <>
-              Already registered?
+            <p className="auth-switch-text">
+              Already registered?{' '}
               <span className="auth-link" onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('login'); }}>
                 Log In
               </span>
-            </>
+            </p>
           )}
-          <div style={{ marginTop: '1.25rem' }}>
-            <span className="auth-link" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }} onClick={() => setCurrentView('landing')}>
+          <div className="auth-back-home">
+            <span className="auth-link back-link" onClick={() => setCurrentView('landing')}>
               ← Back to Home
             </span>
           </div>

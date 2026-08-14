@@ -1,7 +1,26 @@
-import React, { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
-import { FolderOpen, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Loader2 } from 'lucide-react';
+import { useSelector, useDispatch } from 'react-redux';
 import './App.css';
 import { baseURL } from './config';
+
+// Import Redux Actions
+import {
+  setQuestionsData,
+  setLoading as setReduxLoading,
+  setError,
+  setFilters as setReduxFilters,
+  setCurrentPage,
+  setViewMode as setReduxViewMode,
+  setActiveFolder as setReduxActiveFolder,
+  resetQuestionsState,
+  updateLocalQuestionDone,
+  updateLocalRevisions,
+  updateLocalNotes,
+  removeLocalQuestion,
+  addLocalQuestion,
+  editLocalQuestion
+} from './store/questionSlice';
 
 // Import Modular Components
 import Navbar from './components/Navbar';
@@ -14,6 +33,7 @@ import HeroStats from './components/HeroStats';
 import FilterToolbar from './components/FilterToolbar';
 import FoldersGrid from './components/FoldersGrid';
 import QuestionTable from './components/QuestionTable';
+import Pagination from './components/Pagination';
 
 // Import Modals
 import AddQuestionModal from './components/modals/AddQuestionModal';
@@ -22,6 +42,23 @@ import NotesModal from './components/modals/NotesModal';
 import ResetModal from './components/modals/ResetModal';
 
 function App() {
+  const dispatch = useDispatch();
+
+  // Redux Store Selectors
+  const {
+    questions,
+    totalQuestions,
+    totalPages,
+    currentPage,
+    limit,
+    loading: questionsLoading,
+    filters,
+    stats,
+    topicsList,
+    viewMode,
+    activeFolder
+  } = useSelector((state) => state.questions);
+
   // Authentication & Session State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
@@ -32,10 +69,6 @@ function App() {
   const [authForm, setAuthForm] = useState({ username: '', password: '' });
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
-
-  // LeetTracker Board State
-  const [questions, setQuestions] = useState([]);
-  const [loading, setLoading] = useState(false);
 
   // API calling state tracker
   const [activeRequests, setActiveRequests] = useState(0);
@@ -64,16 +97,6 @@ function App() {
       setActiveRequests(prev => Math.max(0, prev - 1));
     }
   }, []);
-
-  const [filters, setFilters] = useState({
-    search: '',
-    topic: 'all',
-    difficulty: 'all',
-    status: 'all',
-    sort: 'none'
-  });
-  const [viewMode, setViewMode] = useState('table'); // 'table' or 'folder'
-  const [activeFolder, setActiveFolder] = useState(null); // name of active topic folder
 
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -104,57 +127,99 @@ function App() {
     notes: ''
   });
 
-  // Fetch questions for authenticated user
-  const fetchQuestions = useCallback(async () => {
+  // Fetch questions from API and update Redux Store
+  const fetchQuestions = useCallback(async (overrides = {}) => {
+    const currentFilters = overrides.filters || filters;
+    const page = overrides.page ?? currentPage;
+
+    dispatch(setReduxLoading(true));
     try {
-      setLoading(true);
-      const response = await customFetch(`${baseURL}/api/questions`);
+      const params = new URLSearchParams({
+        page: page,
+        limit: limit,
+        search: currentFilters.search.trim(),
+        topic: currentFilters.topic,
+        difficulty: currentFilters.difficulty,
+        status: currentFilters.status,
+        sort: currentFilters.sort
+      });
+
+      const response = await customFetch(`${baseURL}/api/questions?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
-        setQuestions(data);
+        dispatch(setQuestionsData(data));
       } else if (response.status === 401) {
         setIsAuthenticated(false);
         setUsername('');
         setCurrentView('landing');
+        dispatch(resetQuestionsState());
         showToast("Session expired. Please log in again.", "warning");
       }
     } catch (error) {
       console.error('Error fetching questions:', error);
       showToast("Could not retrieve questions. Server connection error.", "warning");
+      dispatch(setError(error.message));
     } finally {
-      setLoading(false);
+      dispatch(setReduxLoading(false));
     }
-  }, [customFetch, showToast]);
+  }, [customFetch, dispatch, filters, currentPage, limit, showToast]);
 
-  // Verify session cookie on mount
-  const checkAuthStatus = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await customFetch(`${baseURL}/api/auth/me`);
-      if (response.ok) {
-        const data = await response.json();
-        setUsername(data.user.username);
-        setIsAuthenticated(true);
-        setCurrentView('dashboard');
+  // Fetch questions whenever filters change (debounced 300ms)
+  useEffect(() => {
+    if (isAuthenticated && currentView === 'dashboard') {
+      const timer = setTimeout(() => {
         fetchQuestions();
-      } else {
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, currentView, filters, fetchQuestions]);
+
+  // Verify session cookie once on initial mount
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        dispatch(setReduxLoading(true));
+        const response = await customFetch(`${baseURL}/api/auth/me`);
+        if (response.ok) {
+          const data = await response.json();
+          setUsername(data.user.username);
+          setIsAuthenticated(true);
+          setCurrentView('dashboard');
+        } else {
+          setIsAuthenticated(false);
+          setUsername('');
+          setCurrentView('landing');
+        }
+      } catch (error) {
+        console.error('Auth verification error:', error);
         setIsAuthenticated(false);
         setUsername('');
         setCurrentView('landing');
+      } finally {
+        dispatch(setReduxLoading(false));
       }
-    } catch (error) {
-      console.error('Auth verification error:', error);
-      setIsAuthenticated(false);
-      setUsername('');
-      setCurrentView('landing');
-    } finally {
-      setLoading(false);
-    }
-  }, [customFetch, fetchQuestions]);
+    };
 
-  useEffect(() => {
     checkAuthStatus();
-  }, [checkAuthStatus]);
+  }, [customFetch, dispatch]);
+
+  // Helper setter for filters to dispatch to Redux
+  const handleSetFilters = useCallback((newFiltersOrUpdater) => {
+    if (typeof newFiltersOrUpdater === 'function') {
+      const nextFilters = newFiltersOrUpdater(filters);
+      dispatch(setReduxFilters(nextFilters));
+    } else {
+      dispatch(setReduxFilters(newFiltersOrUpdater));
+    }
+  }, [dispatch, filters]);
+
+  const handleSetViewMode = useCallback((mode) => {
+    dispatch(setReduxViewMode(mode));
+  }, [dispatch]);
+
+  const handleSetActiveFolder = useCallback((folder) => {
+    dispatch(setReduxActiveFolder(folder));
+  }, [dispatch]);
 
   // Auth Handlers
   const handleAuthSubmit = useCallback(async (e, type) => {
@@ -186,7 +251,7 @@ function App() {
         setIsAuthenticated(true);
         setAuthForm({ username: '', password: '' });
         setCurrentView('dashboard');
-        fetchQuestions();
+        fetchQuestions({ page: 1 });
         showToast(
           type === 'login'
             ? `Welcome back, ${data.user.username}!`
@@ -212,109 +277,25 @@ function App() {
     } finally {
       setIsAuthenticated(false);
       setUsername('');
-      setQuestions([]);
+      dispatch(resetQuestionsState());
       setCurrentView('landing');
       setIsMobileMenuOpen(false);
       showToast("Logged out successfully.", "info");
     }
-  }, [customFetch, showToast]);
-
-  // Compute stats reactively
-  const stats = useMemo(() => {
-    const total = questions.length;
-    const solved = questions.filter(q => q.done).length;
-    const percentage = total > 0 ? Math.round((solved / total) * 100) : 0;
-
-    const topicsSet = new Set(questions.map(q => q.topic));
-
-    const difficulty = {
-      Easy: { solved: 0, total: 0 },
-      Medium: { solved: 0, total: 0 },
-      Hard: { solved: 0, total: 0 }
-    };
-
-    questions.forEach(q => {
-      if (difficulty[q.difficulty]) {
-        difficulty[q.difficulty].total += 1;
-        if (q.done) {
-          difficulty[q.difficulty].solved += 1;
-        }
-      }
-    });
-
-    return {
-      total,
-      solved,
-      percentage,
-      totalTopics: topicsSet.size,
-      difficulty
-    };
-  }, [questions]);
-
-  // Topic options for filter dropdown
-  const topicsList = useMemo(() => {
-    const set = new Set(questions.map(q => q.topic));
-    return Array.from(set).sort();
-  }, [questions]);
-
-  // Non-blocking deferred search for zero-lag typing
-  const deferredSearch = useDeferredValue(filters.search);
-
-  // Filtered & Sorted questions logic
-  const filteredQuestions = useMemo(() => {
-    let result = [...questions];
-
-    // Apply Search Filter
-    if (deferredSearch.trim() !== '') {
-      const q = deferredSearch.toLowerCase().trim();
-      result = result.filter(item =>
-        item.name.toLowerCase().includes(q) ||
-        item.topic.toLowerCase().includes(q)
-      );
-    }
-
-    // Apply Topic Filter
-    if (filters.topic !== 'all') {
-      result = result.filter(item => item.topic === filters.topic);
-    }
-
-    // Apply Difficulty Filter
-    if (filters.difficulty !== 'all') {
-      result = result.filter(item => item.difficulty === filters.difficulty);
-    }
-
-    // Apply Status Filter
-    if (filters.status !== 'all') {
-      const isSolved = filters.status === 'solved';
-      result = result.filter(item => item.done === isSolved);
-    }
-
-    // Apply Sorting Options
-    if (filters.sort === 'time-asc') {
-      result.sort((a, b) => (a.timeTaken || 0) - (b.timeTaken || 0));
-    } else if (filters.sort === 'time-desc') {
-      result.sort((a, b) => (b.timeTaken || 0) - (a.timeTaken || 0));
-    } else if (filters.sort === 'rev-asc') {
-      result.sort((a, b) => (a.revisions || 0) - (b.revisions || 0));
-    } else if (filters.sort === 'rev-desc') {
-      result.sort((a, b) => (b.revisions || 0) - (a.revisions || 0));
-    }
-
-    return result;
-  }, [questions, deferredSearch, filters.topic, filters.difficulty, filters.status, filters.sort]);
+  }, [customFetch, dispatch, showToast]);
 
   // Questions to render based on Folder selection
   const questionsToRender = useMemo(() => {
     if (viewMode === 'folder' && activeFolder) {
-      return filteredQuestions.filter(q => q.topic === activeFolder);
+      return questions.filter(q => q.topic === activeFolder);
     }
-    return filteredQuestions;
-  }, [filteredQuestions, viewMode, activeFolder]);
+    return questions;
+  }, [questions, viewMode, activeFolder]);
 
   // Folders Aggregated Data for Folder View
   const foldersData = useMemo(() => {
     const map = {};
-    filteredQuestions.forEach(q => {
+    questions.forEach(q => {
       if (!map[q.topic]) {
         map[q.topic] = { name: q.topic, total: 0, solved: 0, easy: 0, medium: 0, hard: 0 };
       }
@@ -325,7 +306,7 @@ function App() {
       if (q.difficulty === 'Hard') map[q.topic].hard += 1;
     });
     return Object.values(map).sort((a, b) => a.name.localeCompare(b.name));
-  }, [filteredQuestions]);
+  }, [questions]);
 
   // Toggle question solved status
   const toggleQuestionStatus = useCallback(async (id) => {
@@ -333,24 +314,27 @@ function App() {
     if (!question) return;
 
     const nextDone = !question.done;
-    setQuestions(prev => prev.map(q => (q._id || q.id) === id ? { ...q, done: nextDone } : q));
+    dispatch(updateLocalQuestionDone({ id, nextDone }));
 
     try {
-      const response = await customFetch(`${baseURL}/api/questions/${id}/toggle`, {
-        method: 'PATCH'
+      const response = await customFetch(`${baseURL}/api/questions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ done: nextDone })
       });
       if (response.ok) {
         showToast(nextDone ? "Marked as solved!" : "Marked as unsolved.", "info");
+        fetchQuestions();
       } else {
-        setQuestions(prev => prev.map(q => (q._id || q.id) === id ? { ...q, done: !nextDone } : q));
+        dispatch(updateLocalQuestionDone({ id, nextDone: !nextDone }));
         showToast("Failed to update status on server.", "warning");
       }
     } catch (error) {
       console.error('Error toggling status:', error);
-      setQuestions(prev => prev.map(q => (q._id || q.id) === id ? { ...q, done: !nextDone } : q));
+      dispatch(updateLocalQuestionDone({ id, nextDone: !nextDone }));
       showToast("Network error updating question status.", "warning");
     }
-  }, [questions, customFetch, showToast]);
+  }, [questions, customFetch, dispatch, showToast, fetchQuestions]);
 
   // Save Notes handler
   const handleSaveNotes = useCallback(async (e) => {
@@ -367,7 +351,7 @@ function App() {
       });
 
       if (response.ok) {
-        setQuestions(prev => prev.map(item => (item._id || item.id) === noteModalData.id ? { ...item, notes: noteModalData.notes } : item));
+        dispatch(updateLocalNotes({ id: noteModalData.id, notes: noteModalData.notes }));
         setIsNoteModalOpen(false);
         showToast(`Note saved for "${noteModalData.name}"`, "success");
       } else {
@@ -377,7 +361,7 @@ function App() {
       console.error('Error saving notes:', error);
       showToast("Network error saving note.", "warning");
     }
-  }, [noteModalData, customFetch, showToast]);
+  }, [noteModalData, customFetch, dispatch, showToast]);
 
   const openNotesModal = useCallback((q) => {
     setNoteModalData({
@@ -415,8 +399,9 @@ function App() {
       });
 
       if (response.ok) {
-        const newQuestion = await response.json();
-        setQuestions(prev => [newQuestion, ...prev]);
+        const resData = await response.json();
+        const newQuestion = resData.question || resData;
+        dispatch(addLocalQuestion(newQuestion));
         setIsAddModalOpen(false);
         setAddForm({
           topic: '',
@@ -428,6 +413,7 @@ function App() {
           notes: ''
         });
         showToast(`Added "${newQuestion.name}" to your sheet.`, "success");
+        fetchQuestions();
       } else {
         const err = await response.json();
         showToast(err.error || "Failed to add question.", "warning");
@@ -436,7 +422,7 @@ function App() {
       console.error('Error adding question:', error);
       showToast("Server error adding question.", "warning");
     }
-  }, [addForm, customFetch, showToast]);
+  }, [addForm, customFetch, dispatch, showToast, fetchQuestions]);
 
   // Open Edit Modal
   const handleEditClick = useCallback((question) => {
@@ -479,10 +465,12 @@ function App() {
       });
 
       if (response.ok) {
-        const updatedQuestion = await response.json();
-        setQuestions(prev => prev.map(q => (q._id || q.id) === editForm.id ? updatedQuestion : q));
+        const resData = await response.json();
+        const updatedQuestion = resData.question || resData;
+        dispatch(editLocalQuestion(updatedQuestion));
         setIsEditModalOpen(false);
         showToast(`Updated "${updatedQuestion.name}".`, "success");
+        fetchQuestions();
       } else {
         const err = await response.json();
         showToast(err.error || "Failed to update question.", "warning");
@@ -491,7 +479,7 @@ function App() {
       console.error('Error updating question:', error);
       showToast("Server error updating question.", "warning");
     }
-  }, [editForm, customFetch, showToast]);
+  }, [editForm, customFetch, dispatch, showToast, fetchQuestions]);
 
   // Delete Question
   const handleDeleteClick = useCallback(async (question) => {
@@ -504,8 +492,9 @@ function App() {
       });
 
       if (response.ok) {
-        setQuestions(prev => prev.filter(q => (q._id || q.id) !== qId));
+        dispatch(removeLocalQuestion(qId));
         showToast(`Deleted "${question.name}".`, "info");
+        fetchQuestions();
       } else {
         showToast("Failed to delete question.", "warning");
       }
@@ -513,12 +502,12 @@ function App() {
       console.error('Error deleting question:', error);
       showToast("Server error deleting question.", "warning");
     }
-  }, [customFetch, showToast]);
+  }, [customFetch, dispatch, showToast, fetchQuestions]);
 
   // Revisions Counter Increments / Decrements
   const handleUpdateRevisions = useCallback(async (id, nextRevisions) => {
     if (nextRevisions < 0) return;
-    setQuestions(prev => prev.map(q => (q._id || q.id) === id ? { ...q, revisions: nextRevisions } : q));
+    dispatch(updateLocalRevisions({ id, revisions: nextRevisions }));
 
     try {
       const response = await customFetch(`${baseURL}/api/questions/${id}`, {
@@ -535,7 +524,7 @@ function App() {
     } catch (error) {
       console.error('Error updating revisions:', error);
     }
-  }, [customFetch, showToast]);
+  }, [customFetch, dispatch, showToast]);
 
   // Confirm Reset Sheet Progress
   const handleResetConfirm = useCallback(async () => {
@@ -545,9 +534,9 @@ function App() {
       });
 
       if (response.ok) {
-        setQuestions(prev => prev.map(q => ({ ...q, done: false, revisions: 0 })));
         setIsResetModalOpen(false);
         showToast("Sheet progress reset successfully.", "info");
+        fetchQuestions({ page: 1 });
       } else {
         showToast("Failed to reset progress.", "warning");
       }
@@ -555,10 +544,10 @@ function App() {
       console.error('Error resetting progress:', error);
       showToast("Server error resetting progress.", "warning");
     }
-  }, [customFetch, showToast]);
+  }, [customFetch, showToast, fetchQuestions]);
 
   // Radial Progress Circle math
-  const circleCircumference = 2 * Math.PI * 34; // r=34 => 213.628
+  const circleCircumference = 2 * Math.PI * 34;
   const strokeDashoffset = circleCircumference - (stats.percentage / 100) * circleCircumference;
 
   return (
@@ -596,7 +585,7 @@ function App() {
       />
 
       <main className="main-content">
-        {loading ? (
+        {questionsLoading && questions.length === 0 ? (
           <div className="loading-state">
             <div className="loading-spinner-wrapper">
               <Loader2 className="spinner text-accent" size={44} />
@@ -630,10 +619,10 @@ function App() {
 
                 <FilterToolbar
                   filters={filters}
-                  setFilters={setFilters}
+                  setFilters={handleSetFilters}
                   viewMode={viewMode}
-                  setViewMode={setViewMode}
-                  setActiveFolder={setActiveFolder}
+                  setViewMode={handleSetViewMode}
+                  setActiveFolder={handleSetActiveFolder}
                   setIsAddModalOpen={setIsAddModalOpen}
                   setIsResetModalOpen={setIsResetModalOpen}
                   topicsList={topicsList}
@@ -643,22 +632,26 @@ function App() {
                 {viewMode === 'folder' && !activeFolder ? (
                   <FoldersGrid
                     foldersData={foldersData}
-                    setActiveFolder={setActiveFolder}
-                  />
-                ) : (
-                  <QuestionTable
-                    questionsToRender={questionsToRender}
-                    viewMode={viewMode}
-                    activeFolder={activeFolder}
-                    setActiveFolder={setActiveFolder}
-                    setFilters={setFilters}
-                    toggleQuestionStatus={toggleQuestionStatus}
-                    openNotesModal={openNotesModal}
-                    handleUpdateRevisions={handleUpdateRevisions}
-                    handleEditClick={handleEditClick}
-                    handleDeleteClick={handleDeleteClick}
+                    setActiveFolder={handleSetActiveFolder}
                     isApiCalling={isApiCalling}
                   />
+                ) : (
+                  <>
+                    <QuestionTable
+                      questionsToRender={questionsToRender}
+                      viewMode={viewMode}
+                      activeFolder={activeFolder}
+                      setActiveFolder={handleSetActiveFolder}
+                      setFilters={handleSetFilters}
+                      toggleQuestionStatus={toggleQuestionStatus}
+                      openNotesModal={openNotesModal}
+                      handleUpdateRevisions={handleUpdateRevisions}
+                      handleEditClick={handleEditClick}
+                      handleDeleteClick={handleDeleteClick}
+                      isApiCalling={isApiCalling}
+                    />
+                    <Pagination onPageChange={(page) => fetchQuestions({ page })} />
+                  </>
                 )}
               </>
             )}

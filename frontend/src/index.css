@@ -1370,6 +1370,57 @@ button[disabled] {
   text-align: left;
 }
 
+.auth-footer {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1.25rem;
+}
+
+.auth-switch-text {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.auth-link {
+  color: var(--color-accent);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.auth-link:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
+.auth-back-home {
+  margin-top: 0.25rem;
+}
+
+.auth-link.back-link {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.auth-link.back-link:hover {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+}
+
 /* --- Modals Overlay & Cards --- */
 .modal-overlay {
   position: fixed;
@@ -1842,6 +1893,79 @@ button[disabled] {
 .footer-linkedin-link:hover {
   color: #818cf8;
   transform: translateY(-1px);
+}
+
+/* Pagination Component */
+.pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.75rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur);
+  margin-top: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.pagination-info {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.pagination-info .highlight {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.btn-page {
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.5rem;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-page:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-primary);
+  border-color: var(--border-hover);
+}
+
+.btn-page.active {
+  background-color: var(--color-accent);
+  color: #000;
+  border-color: var(--color-accent);
+  font-weight: 700;
+}
+
+.btn-page.dots {
+  border: none;
+  background: transparent;
+  cursor: default;
+}
+
+.btn-nav {
+  gap: 0.35rem;
+  padding: 0 0.85rem;
 }
 
 /* ==========================================================================

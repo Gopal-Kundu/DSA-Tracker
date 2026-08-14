@@ -1,5 +1,6 @@
 import React from 'react';
-import { ArrowLeft, FolderOpen } from 'lucide-react';
+import { ArrowLeft, FolderOpen, Loader2 } from 'lucide-react';
+import { useSelector } from 'react-redux';
 import QuestionRow from './QuestionRow';
 
 const QuestionTable = ({
@@ -15,6 +16,9 @@ const QuestionTable = ({
   handleDeleteClick,
   isApiCalling
 }) => {
+  const reduxLoading = useSelector((state) => state.questions.loading);
+  const isLoading = reduxLoading || isApiCalling;
+
   return (
     <div>
       {viewMode === 'folder' && activeFolder && (
@@ -30,7 +34,15 @@ const QuestionTable = ({
         </div>
       )}
 
-      {questionsToRender.length === 0 ? (
+      {isLoading ? (
+        <div className="empty-state" style={{ minHeight: '260px' }}>
+          <div className="loading-spinner-wrapper" style={{ marginBottom: '0.75rem' }}>
+            <Loader2 className="spinner text-accent" size={36} />
+          </div>
+          <h3>Loading...</h3>
+          <p>Fetching questions from the server...</p>
+        </div>
+      ) : questionsToRender.length === 0 ? (
         <div className="empty-state">
           <FolderOpen className="empty-state-icon" size={48} />
           <h3>No questions found</h3>
