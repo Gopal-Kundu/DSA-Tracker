@@ -60,16 +60,7 @@ const MobileDrawer = ({
                 </div>
               </div>
 
-              <div className="drawer-stats">
-                <div className="meta-item">
-                  <span className="meta-label">Total Questions</span>
-                  <span className="meta-val">{stats.total}</span>
-                </div>
-                <div className="meta-item">
-                  <span className="meta-label">Topics Available</span>
-                  <span className="meta-val">{stats.totalTopics}</span>
-                </div>
-              </div>
+
 
               <button
                 className="btn btn-danger btn-logout-drawer"

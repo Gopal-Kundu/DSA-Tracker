@@ -28,18 +28,7 @@ const Navbar = ({
             <h1>LeetTracker</h1>
           </div>
 
-          {isAuthenticated && currentView === 'dashboard' && (
-            <div className="header-meta desktop-only">
-              <div className="meta-item">
-                <span className="meta-label">Total Questions</span>
-                <span className="meta-val">{stats.total}</span>
-              </div>
-              <div className="meta-item">
-                <span className="meta-label">Topics Available</span>
-                <span className="meta-val">{stats.totalTopics}</span>
-              </div>
-            </div>
-          )}
+
         </div>
 
         <div className="header-right">
