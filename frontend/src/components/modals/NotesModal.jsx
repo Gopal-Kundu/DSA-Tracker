@@ -205,7 +205,14 @@ const NotesModal = ({
               className="btn btn-primary"
               disabled={isApiCalling || isAiLoading}
             >
-              Save Note
+              {isApiCalling ? (
+                <>
+                  <Loader2 className="spinner" size={16} />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Save Note</span>
+              )}
             </button>
           </div>
         </form>

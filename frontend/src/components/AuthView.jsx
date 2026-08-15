@@ -62,10 +62,11 @@ const AuthView = ({
           <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem' }} disabled={authLoading || isApiCalling}>
             {authLoading || isApiCalling ? (
               <>
-                <Loader2 size={16} className="spinner" /> Authenticating...
+                <Loader2 size={16} className="spinner" />
+                <span>{currentView === 'login' ? 'Logging in...' : 'Creating account...'}</span>
               </>
             ) : (
-              currentView === 'login' ? 'Access Dashboard' : 'Generate Account'
+              <span>{currentView === 'login' ? 'Access Dashboard' : 'Generate Account'}</span>
             )}
           </button>
         </form>

@@ -132,6 +132,7 @@ function App() {
   const fetchQuestions = useCallback(async (overrides = {}) => {
     const currentFilters = overrides.filters || filters;
     const page = overrides.page ?? currentPage;
+    const effectiveTopic = (viewMode === 'folder' && activeFolder) ? activeFolder : currentFilters.topic;
 
     dispatch(setReduxLoading(true));
     try {
@@ -139,7 +140,7 @@ function App() {
         page: page,
         limit: limit,
         search: currentFilters.search.trim(),
-        topic: currentFilters.topic,
+        topic: effectiveTopic,
         difficulty: currentFilters.difficulty,
         status: currentFilters.status,
         sort: currentFilters.sort
@@ -163,9 +164,9 @@ function App() {
     } finally {
       dispatch(setReduxLoading(false));
     }
-  }, [customFetch, dispatch, filters, currentPage, limit, showToast]);
+  }, [customFetch, dispatch, filters, currentPage, limit, viewMode, activeFolder, showToast]);
 
-  // Fetch questions whenever filters change (debounced 300ms)
+  // Fetch questions whenever filters, view mode, or active folder changes (debounced 300ms)
   useEffect(() => {
     if (isAuthenticated && currentView === 'dashboard') {
       const timer = setTimeout(() => {
@@ -173,7 +174,7 @@ function App() {
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, currentView, filters, fetchQuestions]);
+  }, [isAuthenticated, currentView, filters, viewMode, activeFolder, fetchQuestions]);
 
   // Verify session cookie once on initial mount
   useEffect(() => {
@@ -567,6 +568,7 @@ function App() {
         isApiCalling={isApiCalling}
         setAuthError={setAuthError}
         setAuthForm={setAuthForm}
+        setIsResetModalOpen={setIsResetModalOpen}
       />
 
       <MobileDrawer
@@ -583,6 +585,7 @@ function App() {
         isApiCalling={isApiCalling}
         setAuthError={setAuthError}
         setAuthForm={setAuthForm}
+        setIsResetModalOpen={setIsResetModalOpen}
       />
 
       <main className="main-content">
@@ -642,6 +645,7 @@ function App() {
                       viewMode={viewMode}
                       activeFolder={activeFolder}
                       setActiveFolder={handleSetActiveFolder}
+                      filters={filters}
                       setFilters={handleSetFilters}
                       toggleQuestionStatus={toggleQuestionStatus}
                       openNotesModal={openNotesModal}

@@ -46,24 +46,50 @@ const getQuestions = async (req, res) => {
       query.done = status === 'solved';
     }
 
-    // Sorting: default to createdAt: -1 (newest created questions first)
-    let sortOptions = { createdAt: -1, _id: -1 };
-    if (sort === 'time-asc') sortOptions = { timeTaken: 1, createdAt: -1 };
-    else if (sort === 'time-desc') sortOptions = { timeTaken: -1, createdAt: -1 };
-    else if (sort === 'rev-asc') sortOptions = { revisions: 1, createdAt: -1 };
-    else if (sort === 'rev-desc') sortOptions = { revisions: -1, createdAt: -1 };
-    else if (sort === 'created-asc') sortOptions = { createdAt: 1, _id: 1 };
-    else sortOptions = { createdAt: -1, _id: -1 };
+    // Build aggregation pipeline for accurate sorting & pagination
+    const matchStage = { $match: query };
+
+    const addFieldsStage = {
+      $addFields: {
+        difficultyOrder: {
+          $switch: {
+            branches: [
+              { case: { $eq: ["$difficulty", "Easy"] }, then: 1 },
+              { case: { $eq: ["$difficulty", "Medium"] }, then: 2 },
+              { case: { $eq: ["$difficulty", "Hard"] }, then: 3 }
+            ],
+            default: 4
+          }
+        }
+      }
+    };
+
+    let sortStage = { $sort: { createdAt: -1, _id: -1 } };
+    if (sort === 'time-asc') sortStage = { $sort: { timeTaken: 1, createdAt: -1 } };
+    else if (sort === 'time-desc') sortStage = { $sort: { timeTaken: -1, createdAt: -1 } };
+    else if (sort === 'rev-asc') sortStage = { $sort: { revisions: 1, createdAt: -1 } };
+    else if (sort === 'rev-desc') sortStage = { $sort: { revisions: -1, createdAt: -1 } };
+    else if (sort === 'diff-asc') sortStage = { $sort: { difficultyOrder: 1, createdAt: -1 } };
+    else if (sort === 'diff-desc') sortStage = { $sort: { difficultyOrder: -1, createdAt: -1 } };
+    else if (sort === 'name-asc') sortStage = { $sort: { name: 1, createdAt: -1 } };
+    else if (sort === 'name-desc') sortStage = { $sort: { name: -1, createdAt: -1 } };
+    else if (sort === 'status-solved') sortStage = { $sort: { done: -1, createdAt: -1 } };
+    else if (sort === 'status-unsolved') sortStage = { $sort: { done: 1, createdAt: -1 } };
+    else if (sort === 'created-asc') sortStage = { $sort: { createdAt: 1, _id: 1 } };
+    else sortStage = { $sort: { createdAt: -1, _id: -1 } };
 
     // Total count of matching questions
     const totalQuestions = await Question.countDocuments(query);
     const totalPages = Math.ceil(totalQuestions / limit) || 1;
     const safePage = Math.min(Math.max(1, page), totalPages);
 
-    const questions = await Question.find(query)
-      .sort(sortOptions)
-      .skip((safePage - 1) * limit)
-      .limit(limit);
+    const questions = await Question.aggregate([
+      matchStage,
+      addFieldsStage,
+      sortStage,
+      { $skip: (safePage - 1) * limit },
+      { $limit: limit }
+    ]);
 
     // Compute stats across all user questions (unfiltered)
     const allUserQuestions = await Question.find({ user: req.user._id }).select('topic done difficulty');

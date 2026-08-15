@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, Loader2, X } from 'lucide-react';
 
 const ResetModal = ({
   isResetModalOpen,
@@ -30,7 +30,16 @@ const ResetModal = ({
         </div>
         <div className="modal-footer">
           <button type="button" className="btn btn-secondary" onClick={() => setIsResetModalOpen(false)} disabled={isApiCalling}>Cancel</button>
-          <button type="button" className="btn btn-danger" onClick={handleResetConfirm} disabled={isApiCalling}>Yes, Reset Progress</button>
+          <button type="button" className="btn btn-danger" onClick={handleResetConfirm} disabled={isApiCalling}>
+            {isApiCalling ? (
+              <>
+                <Loader2 className="spinner" size={16} />
+                <span>Resetting...</span>
+              </>
+            ) : (
+              <span>Yes, Reset Progress</span>
+            )}
+          </button>
         </div>
       </div>
     </div>

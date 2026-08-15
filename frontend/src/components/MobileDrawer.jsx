@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogOut, X } from 'lucide-react';
+import { Loader2, LogOut, RotateCcw, X } from 'lucide-react';
 
 const MobileDrawer = ({
   isAuthenticated,
@@ -14,7 +14,8 @@ const MobileDrawer = ({
   setIsMobileMenuOpen,
   isApiCalling,
   setAuthError,
-  setAuthForm
+  setAuthForm,
+  setIsResetModalOpen
 }) => {
   return (
     <div className={`mobile-drawer ${isMobileMenuOpen ? 'open' : ''}`}>
@@ -60,15 +61,33 @@ const MobileDrawer = ({
                 </div>
               </div>
 
-
+              <button
+                className="btn btn-secondary text-danger-hover"
+                onClick={() => { setIsResetModalOpen(true); setIsMobileMenuOpen(false); }}
+                style={{ width: '100%', marginTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                disabled={isApiCalling}
+              >
+                <RotateCcw size={16} />
+                <span>Reset Progress</span>
+              </button>
 
               <button
                 className="btn btn-danger btn-logout-drawer"
                 onClick={handleLogout}
-                style={{ width: '100%', marginTop: '2rem' }}
+                style={{ width: '100%', marginTop: '1rem' }}
                 disabled={isApiCalling}
               >
-                <LogOut size={16} style={{ marginRight: '0.5rem' }} /> Log Out
+                {isApiCalling ? (
+                  <>
+                    <Loader2 size={16} className="spinner" style={{ marginRight: '0.5rem' }} />
+                    <span>Logging out...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut size={16} style={{ marginRight: '0.5rem' }} />
+                    <span>Log Out</span>
+                  </>
+                )}
               </button>
             </div>
           ) : (

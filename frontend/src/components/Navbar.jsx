@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogOut, Menu, X } from 'lucide-react';
+import { Loader2, LogOut, Menu, RotateCcw, X } from 'lucide-react';
 
 const Navbar = ({
   isAuthenticated,
@@ -14,7 +14,8 @@ const Navbar = ({
   setIsMobileMenuOpen,
   isApiCalling,
   setAuthError,
-  setAuthForm
+  setAuthForm,
+  setIsResetModalOpen
 }) => {
   return (
     <header className="main-header">
@@ -60,8 +61,28 @@ const Navbar = ({
                 </div>
 
                 <span className="username-display">@{username}</span>
+                <button
+                  className="btn btn-secondary text-danger-hover"
+                  onClick={() => setIsResetModalOpen(true)}
+                  title="Reset Sheet Progress"
+                  disabled={isApiCalling}
+                  style={{ padding: '0.45rem 0.8rem', fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                >
+                  <RotateCcw size={14} />
+                  <span>Reset Progress</span>
+                </button>
                 <button className="btn-logout" onClick={handleLogout} title="Log out from LeetTracker" disabled={isApiCalling}>
-                  <LogOut size={14} style={{ marginRight: '0.4rem' }} /> Log Out
+                  {isApiCalling ? (
+                    <>
+                      <Loader2 size={14} className="spinner" style={{ marginRight: '0.4rem' }} />
+                      <span>Logging out...</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogOut size={14} style={{ marginRight: '0.4rem' }} />
+                      <span>Log Out</span>
+                    </>
+                  )}
                 </button>
               </div>
             ) : (

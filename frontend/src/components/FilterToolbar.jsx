@@ -92,21 +92,22 @@ const FilterToolbar = ({
               onChange={(e) => setFilters(prev => ({ ...prev, sort: e.target.value }))}
               className="custom-select"
             >
-              <option value="none">Default Order</option>
-              <option value="time-asc">Time: Low to High</option>
-              <option value="time-desc">Time: High to Low</option>
-              <option value="rev-desc">Revisions: High to Low</option>
-              <option value="rev-asc">Revisions: Low to High</option>
+              <option value="none">Sort: Newest First</option>
+              <option value="created-asc">Sort: Oldest First</option>
+              <option value="name-asc">Title (A to Z)</option>
+              <option value="name-desc">Title (Z to A)</option>
+              <option value="diff-asc">Difficulty (Easy → Hard)</option>
+              <option value="diff-desc">Difficulty (Hard → Easy)</option>
+              <option value="time-asc">Time Taken (Low to High)</option>
+              <option value="time-desc">Time Taken (High to Low)</option>
+              <option value="rev-desc">Revisions (High to Low)</option>
+              <option value="rev-asc">Revisions (Low to High)</option>
+              <option value="status-solved">Status (Solved First)</option>
+              <option value="status-unsolved">Status (Unsolved First)</option>
             </select>
-          </div>
 
-          <div className="filter-right-group">
             <button className="btn btn-primary" onClick={() => setIsAddModalOpen(true)} disabled={isApiCalling}>
               <PlusCircle className="mini-icon" size={16} /> Add Question
-            </button>
-
-            <button className="btn btn-secondary text-danger-hover" onClick={() => setIsResetModalOpen(true)} disabled={isApiCalling}>
-              Reset Progress
             </button>
           </div>
         </div>

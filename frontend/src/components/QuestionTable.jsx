@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, FolderOpen, Loader2 } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, FolderOpen, Loader2 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import QuestionRow from './QuestionRow';
 
@@ -8,6 +8,7 @@ const QuestionTable = ({
   viewMode,
   activeFolder,
   setActiveFolder,
+  filters,
   setFilters,
   toggleQuestionStatus,
   openNotesModal,
@@ -17,6 +18,45 @@ const QuestionTable = ({
   isApiCalling
 }) => {
   const { loading, initialFetched } = useSelector((state) => state.questions);
+  const currentSort = filters?.sort || 'none';
+
+  const handleSortClick = (columnKey) => {
+    setFilters(prev => {
+      let nextSort = 'none';
+      if (columnKey === 'status') {
+        nextSort = prev.sort === 'status-solved' ? 'status-unsolved' : 'status-solved';
+      } else if (columnKey === 'name') {
+        nextSort = prev.sort === 'name-asc' ? 'name-desc' : 'name-asc';
+      } else if (columnKey === 'diff') {
+        nextSort = prev.sort === 'diff-asc' ? 'diff-desc' : 'diff-asc';
+      } else if (columnKey === 'time') {
+        nextSort = prev.sort === 'time-asc' ? 'time-desc' : 'time-asc';
+      } else if (columnKey === 'rev') {
+        nextSort = prev.sort === 'rev-desc' ? 'rev-asc' : 'rev-desc';
+      }
+      return { ...prev, sort: nextSort };
+    });
+  };
+
+  const renderSortIcon = (columnKey) => {
+    if (columnKey === 'status') {
+      if (currentSort === 'status-solved') return <ArrowDown size={14} className="sort-icon-active" />;
+      if (currentSort === 'status-unsolved') return <ArrowUp size={14} className="sort-icon-active" />;
+    } else if (columnKey === 'name') {
+      if (currentSort === 'name-asc') return <ArrowUp size={14} className="sort-icon-active" />;
+      if (currentSort === 'name-desc') return <ArrowDown size={14} className="sort-icon-active" />;
+    } else if (columnKey === 'diff') {
+      if (currentSort === 'diff-asc') return <ArrowUp size={14} className="sort-icon-active" />;
+      if (currentSort === 'diff-desc') return <ArrowDown size={14} className="sort-icon-active" />;
+    } else if (columnKey === 'time') {
+      if (currentSort === 'time-asc') return <ArrowUp size={14} className="sort-icon-active" />;
+      if (currentSort === 'time-desc') return <ArrowDown size={14} className="sort-icon-active" />;
+    } else if (columnKey === 'rev') {
+      if (currentSort === 'rev-desc') return <ArrowDown size={14} className="sort-icon-active" />;
+      if (currentSort === 'rev-asc') return <ArrowUp size={14} className="sort-icon-active" />;
+    }
+    return <ArrowUpDown size={12} className="sort-icon-neutral" />;
+  };
 
   return (
     <div>
@@ -59,14 +99,49 @@ const QuestionTable = ({
       ) : (
         <div className="questions-table-container" style={{ transition: 'opacity 0.2s ease', opacity: loading ? 0.6 : 1 }}>
           <div className="questions-table-header">
-            <div className="col-status">Status</div>
-            <div className="col-title">Title</div>
+            <div
+              className={`col-status clickable-header ${currentSort.startsWith('status') ? 'active-sort' : ''}`}
+              onClick={() => handleSortClick('status')}
+              title="Click to sort by solved status"
+            >
+              <span>Status</span>
+              {renderSortIcon('status')}
+            </div>
+            <div
+              className={`col-title clickable-header ${currentSort.startsWith('name') ? 'active-sort' : ''}`}
+              onClick={() => handleSortClick('name')}
+              title="Click to sort alphabetically by title"
+            >
+              <span>Title</span>
+              {renderSortIcon('name')}
+            </div>
             <div className="col-topic">Topic</div>
             <div className="col-notes">Notes</div>
-            <div className="col-difficulty">Difficulty</div>
-            <div className="col-timetaken">Time Taken</div>
+            <div
+              className={`col-difficulty clickable-header ${currentSort.startsWith('diff') ? 'active-sort' : ''}`}
+              onClick={() => handleSortClick('diff')}
+              title="Click to sort by difficulty (Easy to Hard)"
+            >
+              <span>Difficulty</span>
+              {renderSortIcon('diff')}
+            </div>
+            <div
+              className={`col-timetaken clickable-header ${currentSort.startsWith('time') ? 'active-sort' : ''}`}
+              onClick={() => handleSortClick('time')}
+              title="Click to sort by time taken"
+            >
+              <span>Time Taken</span>
+              {renderSortIcon('time')}
+            </div>
             <div className="col-youtube">YouTube</div>
-            <div className="col-revisions">Revisions</div>
+            <div
+              className={`col-revisions clickable-header ${currentSort.startsWith('rev') ? 'active-sort' : ''}`}
+              onClick={() => handleSortClick('rev')}
+              title="Click to sort by revision count"
+            >
+              <span>Revisions</span>
+              {renderSortIcon('rev')}
+            </div>
             <div className="col-action">Action</div>
           </div>
           <div className="questions-table-body">

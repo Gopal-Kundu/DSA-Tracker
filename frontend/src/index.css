@@ -795,6 +795,39 @@ button[disabled] {
   gap: 0.5rem;
 }
 
+.clickable-header {
+  cursor: pointer;
+  user-select: none;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.clickable-header:hover {
+  color: var(--color-accent);
+}
+
+.clickable-header.active-sort {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.sort-icon-active {
+  color: var(--color-accent);
+  transition: transform 0.2s ease;
+}
+
+.sort-icon-neutral {
+  opacity: 0.4;
+  transition: opacity 0.2s ease;
+}
+
+.clickable-header:hover .sort-icon-neutral {
+  opacity: 0.9;
+  color: var(--color-accent);
+}
+
 .card-metrics-grid {
   display: contents;
 }

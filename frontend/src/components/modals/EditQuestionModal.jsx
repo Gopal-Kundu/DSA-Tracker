@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award, Clock, Code, Edit, ExternalLink, FolderOpen, X, Youtube } from 'lucide-react';
+import { Award, Clock, Code, Edit, ExternalLink, FolderOpen, Loader2, X, Youtube } from 'lucide-react';
 
 const EditQuestionModal = ({
   isEditModalOpen,
@@ -125,7 +125,16 @@ const EditQuestionModal = ({
           </div>
           <div className="modal-footer">
             <button type="button" className="btn btn-secondary" onClick={() => setIsEditModalOpen(false)} disabled={isApiCalling}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={isApiCalling}>Update Question</button>
+            <button type="submit" className="btn btn-primary" disabled={isApiCalling}>
+              {isApiCalling ? (
+                <>
+                  <Loader2 className="spinner" size={16} />
+                  <span>Updating...</span>
+                </>
+              ) : (
+                <span>Update Question</span>
+              )}
+            </button>
           </div>
         </form>
       </div>
