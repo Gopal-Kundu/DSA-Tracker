@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, FileText, X, Sparkles, Loader2, RotateCcw, Check, Save } from 'lucide-react';
+import { Edit, FileText, X, Sparkles, Loader2, RotateCcw, Check } from 'lucide-react';
 import { baseURL } from '../../config';
 
 const NotesModal = ({
@@ -75,14 +75,6 @@ const NotesModal = ({
     setNoteModalData(prev => ({ ...prev, notes: aiRefinedText }));
     setShowAiPreview(false);
     if (showToast) showToast('AI refined text applied to note!', 'info');
-  };
-
-  const handleApplyAndSave = (e) => {
-    setNoteModalData(prev => ({ ...prev, notes: aiRefinedText }));
-    setShowAiPreview(false);
-    setTimeout(() => {
-      handleSaveNotes(e);
-    }, 50);
   };
 
   if (!isNoteModalOpen) return null;
@@ -193,18 +185,6 @@ const NotesModal = ({
                   >
                     <Check size={14} />
                     <span>Apply AI Text</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn-ai-action btn-ai-apply"
-                    style={{ background: 'linear-gradient(135deg, var(--color-accent), #f97316)', color: '#000' }}
-                    onClick={handleApplyAndSave}
-                    disabled={isApiCalling}
-                    title="Apply text and save note immediately"
-                  >
-                    <Save size={14} />
-                    <span>Apply & Save</span>
                   </button>
                 </div>
               </div>
