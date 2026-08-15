@@ -687,7 +687,10 @@ function App() {
         setNoteModalData={setNoteModalData}
         handleSaveNotes={handleSaveNotes}
         isApiCalling={isApiCalling}
+        customFetch={customFetch}
+        showToast={showToast}
       />
+
 
       <ResetModal
         isResetModalOpen={isResetModalOpen}

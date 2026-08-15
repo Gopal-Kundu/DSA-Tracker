@@ -18,6 +18,9 @@ router.post('/bulk', questionController.bulkAddQuestions);
 // POST /api/questions/reset - Reset progress of all questions
 router.post('/reset', questionController.resetProgress);
 
+// POST /api/questions/refine-note - Refine note text using Gemini AI
+router.post('/refine-note', questionController.refineNoteWithAI);
+
 // PUT /api/questions/:id - Update question details or status
 router.put('/:id', questionController.updateQuestion);
 

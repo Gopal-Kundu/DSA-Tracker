@@ -1,10 +1,12 @@
 const Question = require('../models/Question');
 const User = require('../models/User');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const parseTimeTaken = (val) => {
   const num = parseFloat(val);
   return isNaN(num) ? 0 : Math.round(num * 100) / 100;
 };
+
 
 // Get questions for logged-in user with API pagination, search, filter, and sorting
 const getQuestions = async (req, res) => {
@@ -232,14 +234,92 @@ const bulkAddQuestions = async (req, res) => {
   }
 };
 
+// Refine note text using Google Gemini API
+const refineNoteWithAI = async (req, res) => {
+  try {
+    const { notes, name, topic } = req.body;
+
+    if (!notes || !notes.trim()) {
+      return res.status(400).json({ error: 'Please write some note text before refining with AI.' });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(400).json({
+        error: 'Gemini API key is not configured. Please add GEMINI_API_KEY in backend .env file.'
+      });
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+
+    const prompt = `You are a helpful text refinement assistant.
+The user wrote study notes for a DSA problem ("${name || 'DSA Problem'}" - ${topic || 'General'}).
+
+Raw Notes:
+"""
+${notes.trim()}
+"""
+
+Task:
+Refine the raw notes above by ONLY fixing grammar, spelling, punctuation, and sentence clarity.
+CRITICAL RULES:
+1. Do NOT change the original meaning, intent, or core logic of the notes.
+2. Do NOT add new sections, template headers, or fake information that was not in the original note.
+3. Keep the original structure and formatting style intact while making the text clean, readable, and grammatically correct.
+4. Do NOT output any intro/outro or meta commentary (like "Here is the refined note:"). Return ONLY the refined text itself.`;
+
+
+    const modelNamesToTry = [
+      process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite',
+      'gemini-2.0-flash-lite',
+      'gemini-1.5-flash',
+      'gemini-2.0-flash'
+    ];
+
+    let refinedText = '';
+    let lastError = null;
+
+    for (const modelName of [...new Set(modelNamesToTry)]) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        refinedText = response.text();
+        if (refinedText && refinedText.trim()) {
+          break;
+        }
+      } catch (err) {
+        console.warn(`Gemini model ${modelName} attempt failed:`, err.message);
+        lastError = err;
+      }
+    }
+
+    if (!refinedText) {
+      throw lastError || new Error('Failed to generate response from Gemini API');
+    }
+
+    return res.json({
+      success: true,
+      refinedNotes: refinedText.trim()
+    });
+  } catch (error) {
+    console.error('AI Refine error:', error);
+    return res.status(500).json({
+      error: error.message || 'Failed to refine note with AI'
+    });
+  }
+};
+
 module.exports = {
   getQuestions,
   addQuestion,
   bulkAddQuestions,
   updateQuestion,
   deleteQuestion,
-  resetProgress
+  resetProgress,
+  refineNoteWithAI
 };
+
 
 
 
