@@ -1588,6 +1588,15 @@ button[disabled] {
   transition: background var(--transition-fast);
 }
 
+.demo-table-row .col-status { width: 40px; }
+.demo-table-row .col-title { flex: 1; display: flex; align-items: center; gap: 0.5rem; }
+.demo-table-row .col-topic { width: 130px; }
+.demo-table-row .card-metrics-grid { display: flex; align-items: center; gap: 1rem; }
+.demo-table-row .col-difficulty { width: 100px; }
+.demo-table-row .col-timetaken { width: 90px; }
+.demo-table-row .col-revisions { width: 120px; }
+.demo-table-row .col-notes { width: 70px; }
+
 .demo-table-row:last-child {
   border-bottom: none;
 }
@@ -3175,7 +3184,67 @@ button[disabled] {
   }
 
   .demo-table-mock {
-    overflow-x: auto;
+    background: transparent;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .demo-table-row.header-row {
+    display: none !important;
+  }
+
+  .demo-table-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "status title"
+      "topic topic"
+      "metrics metrics";
+    gap: 0.75rem;
+    padding: 1rem;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .demo-table-row .col-status {
+    grid-area: status;
+    width: auto;
+  }
+
+  .demo-table-row .col-title {
+    grid-area: title;
+    width: 100%;
+  }
+
+  .demo-table-row .col-topic {
+    grid-area: topic;
+    width: 100%;
+  }
+
+  .demo-table-row .card-metrics-grid {
+    grid-area: metrics;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    align-items: center;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-md);
+    padding: 0.5rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .demo-table-row .col-notes,
+  .demo-table-row .col-difficulty,
+  .demo-table-row .col-timetaken,
+  .demo-table-row .col-revisions {
+    width: 100%;
+    justify-content: center;
   }
 
   .cta-banner-content h2 {

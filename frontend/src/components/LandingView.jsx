@@ -156,18 +156,18 @@ const LandingView = ({ setCurrentView }) => {
 
               <div className="demo-table-mock">
                 <div className="demo-table-row header-row">
-                  <div style={{ width: '40px' }}>Status</div>
-                  <div style={{ flex: 1 }}>Problem Title</div>
-                  <div style={{ width: '130px' }}>Topic</div>
-                  <div style={{ width: '100px' }}>Difficulty</div>
-                  <div style={{ width: '90px' }}>Time</div>
-                  <div style={{ width: '120px' }}>SRS Revisions</div>
-                  <div style={{ width: '70px' }}>Note</div>
+                  <div className="col-status">Status</div>
+                  <div className="col-title">Problem Title</div>
+                  <div className="col-topic">Topic</div>
+                  <div className="col-difficulty">Difficulty</div>
+                  <div className="col-timetaken">Time</div>
+                  <div className="col-revisions">SRS Revisions</div>
+                  <div className="col-notes">Note</div>
                 </div>
 
                 {/* Interactive Row 1 */}
                 <div className={`demo-table-row ${demoQuestionDone ? 'solved' : ''}`}>
-                  <div style={{ width: '40px' }}>
+                  <div className="col-status">
                     <button
                       className="btn-done-toggle"
                       onClick={() => setDemoQuestionDone(!demoQuestionDone)}
@@ -180,76 +180,82 @@ const LandingView = ({ setCurrentView }) => {
                       <Check size={12} style={{ color: demoQuestionDone ? '#000' : 'transparent', strokeWidth: 4 }} />
                     </button>
                   </div>
-                  <div style={{ flex: 1 }} className="col-title-demo">
+                  <div className="col-title col-title-demo">
                     <span className="demo-problem-name">4. Median of Two Sorted Arrays</span>
                     <ExternalLink size={13} className="text-accent" />
                   </div>
-                  <div style={{ width: '130px' }}>
+                  <div className="col-topic">
                     <span className="topic-badge">Binary Search</span>
                   </div>
-                  <div style={{ width: '100px' }}>
-                    <span className="diff-badge hard">Hard</span>
-                  </div>
-                  <div style={{ width: '90px' }}>
-                    <span className="timetaken-badge">24.5 min</span>
-                  </div>
-                  <div style={{ width: '120px' }}>
-                    <div className="revisions-counter">
-                      <button
-                        className="btn-counter"
-                        onClick={() => setDemoRevisions(Math.max(0, demoRevisions - 1))}
-                        disabled={demoRevisions <= 0}
-                      >
-                        -
-                      </button>
-                      <span className="revisions-count">{demoRevisions}</span>
-                      <button
-                        className="btn-counter"
-                        onClick={() => setDemoRevisions(demoRevisions + 1)}
-                      >
-                        +
-                      </button>
+
+                  <div className="card-metrics-grid">
+                    <div className="col-difficulty">
+                      <span className="diff-badge hard">Hard</span>
                     </div>
-                  </div>
-                  <div style={{ width: '70px' }}>
-                    <div className="btn-icon-note has-notes">
-                      <FileText size={15} />
-                      <span className="notes-indicator-dot"></span>
+                    <div className="col-timetaken">
+                      <span className="timetaken-badge">24.5 min</span>
+                    </div>
+                    <div className="col-revisions">
+                      <div className="revisions-counter">
+                        <button
+                          className="btn-counter"
+                          onClick={() => setDemoRevisions(Math.max(0, demoRevisions - 1))}
+                          disabled={demoRevisions <= 0}
+                        >
+                          -
+                        </button>
+                        <span className="revisions-count">{demoRevisions}</span>
+                        <button
+                          className="btn-counter"
+                          onClick={() => setDemoRevisions(demoRevisions + 1)}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    <div className="col-notes">
+                      <div className="btn-icon-note has-notes">
+                        <FileText size={15} />
+                        <span className="notes-indicator-dot"></span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Non-interactive Row 2 */}
                 <div className="demo-table-row solved">
-                  <div style={{ width: '40px' }}>
+                  <div className="col-status">
                     <div className="btn-done-toggle" style={{ backgroundColor: 'var(--color-success)', borderColor: 'var(--color-success)' }}>
                       <Check size={12} style={{ color: '#000', strokeWidth: 4 }} />
                     </div>
                   </div>
-                  <div style={{ flex: 1 }} className="col-title-demo">
+                  <div className="col-title col-title-demo">
                     <span className="demo-problem-name">15. 3Sum</span>
                     <ExternalLink size={13} className="text-accent" />
-                    </div>
-                  <div style={{ width: '130px' }}>
+                  </div>
+                  <div className="col-topic">
                     <span className="topic-badge">Two Pointers</span>
                   </div>
-                  <div style={{ width: '100px' }}>
-                    <span className="diff-badge medium">Medium</span>
-                  </div>
-                  <div style={{ width: '90px' }}>
-                    <span className="timetaken-badge">15 min</span>
-                  </div>
-                  <div style={{ width: '120px' }}>
-                    <div className="revisions-counter">
-                      <span className="btn-counter">-</span>
-                      <span className="revisions-count">5</span>
-                      <span className="btn-counter">+</span>
+
+                  <div className="card-metrics-grid">
+                    <div className="col-difficulty">
+                      <span className="diff-badge medium">Medium</span>
                     </div>
-                  </div>
-                  <div style={{ width: '70px' }}>
-                    <div className="btn-icon-note has-notes">
-                      <FileText size={15} />
-                      <span className="notes-indicator-dot"></span>
+                    <div className="col-timetaken">
+                      <span className="timetaken-badge">15 min</span>
+                    </div>
+                    <div className="col-revisions">
+                      <div className="revisions-counter">
+                        <span className="btn-counter">-</span>
+                        <span className="revisions-count">5</span>
+                        <span className="btn-counter">+</span>
+                      </div>
+                    </div>
+                    <div className="col-notes">
+                      <div className="btn-icon-note has-notes">
+                        <FileText size={15} />
+                        <span className="notes-indicator-dot"></span>
+                      </div>
                     </div>
                   </div>
                 </div>
