@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, FileText, X, Sparkles, Loader2, RotateCcw, Check } from 'lucide-react';
+import { Edit, FileText, X, Sparkles, Loader2, RotateCcw, Check, Clock, Plus } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { baseURL } from '../../config';
 
 const NotesModal = ({
@@ -8,12 +9,14 @@ const NotesModal = ({
   noteModalData,
   setNoteModalData,
   handleSaveNotes,
-  isApiCalling,
   customFetch,
   showToast
 }) => {
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiLoadingType, setAiLoadingType] = useState(null); // 'refine' | 'complexity' | null
+  const [isSavingNote, setIsSavingNote] = useState(false);
   const [aiRefinedText, setAiRefinedText] = useState('');
+  const [aiMode, setAiMode] = useState('refine'); // 'refine' | 'complexity'
   const [showAiPreview, setShowAiPreview] = useState(false);
   const [aiError, setAiError] = useState('');
 
@@ -24,6 +27,9 @@ const NotesModal = ({
       setShowAiPreview(false);
       setAiError('');
       setIsAiLoading(false);
+      setAiLoadingType(null);
+      setIsSavingNote(false);
+      setAiMode('refine');
     }
   }, [isNoteModalOpen]);
 
@@ -34,6 +40,7 @@ const NotesModal = ({
     }
 
     setIsAiLoading(true);
+    setAiLoadingType('refine');
     setAiError('');
 
     try {
@@ -46,7 +53,8 @@ const NotesModal = ({
         body: JSON.stringify({
           notes: noteModalData.notes,
           name: noteModalData.name,
-          topic: noteModalData.topic
+          topic: noteModalData.topic,
+          mode: 'refine'
         })
       });
 
@@ -54,6 +62,7 @@ const NotesModal = ({
 
       if (response.ok && data.refinedNotes) {
         setAiRefinedText(data.refinedNotes);
+        setAiMode('refine');
         setShowAiPreview(true);
         if (showToast) showToast('Note refined with AI!', 'success');
       } else {
@@ -68,13 +77,77 @@ const NotesModal = ({
       if (showToast) showToast(errStr, 'warning');
     } finally {
       setIsAiLoading(false);
+      setAiLoadingType(null);
     }
+  };
+
+  const handleAiComplexity = async () => {
+    setIsAiLoading(true);
+    setAiLoadingType('complexity');
+    setAiError('');
+
+    try {
+      const fetchFn = customFetch || fetch;
+      const response = await fetchFn(`${baseURL}/api/questions/refine-note`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          notes: noteModalData.notes || '',
+          name: noteModalData.name,
+          topic: noteModalData.topic,
+          mode: 'complexity'
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.refinedNotes) {
+        setAiRefinedText(data.refinedNotes);
+        setAiMode('complexity');
+        setShowAiPreview(true);
+        if (showToast) showToast('Time complexity generated with AI!', 'success');
+      } else {
+        const errorMsg = data.error || 'Failed to analyze time complexity with AI.';
+        setAiError(errorMsg);
+        if (showToast) showToast(errorMsg, 'warning');
+      }
+    } catch (err) {
+      console.error('Error generating time complexity with AI:', err);
+      const errStr = 'Network error while contacting AI service.';
+      setAiError(errStr);
+      if (showToast) showToast(errStr, 'warning');
+    } finally {
+      setIsAiLoading(false);
+      setAiLoadingType(null);
+    }
+  };
+
+  const handleAddAiText = () => {
+    setNoteModalData(prev => {
+      const existing = prev.notes ? prev.notes.trim() : '';
+      const updated = existing ? `${existing}\n\n${aiRefinedText}` : aiRefinedText;
+      return { ...prev, notes: updated };
+    });
+    setShowAiPreview(false);
+    if (showToast) showToast('AI analysis added to original note!', 'info');
   };
 
   const handleApplyAiText = () => {
     setNoteModalData(prev => ({ ...prev, notes: aiRefinedText }));
     setShowAiPreview(false);
-    if (showToast) showToast('AI refined text applied to note!', 'info');
+    if (showToast) showToast('AI text replaced original note!', 'info');
+  };
+
+  const onFormSubmit = async (e) => {
+    e.preventDefault();
+    setIsSavingNote(true);
+    try {
+      await handleSaveNotes(e);
+    } finally {
+      setIsSavingNote(false);
+    }
   };
 
   if (!isNoteModalOpen) return null;
@@ -95,12 +168,12 @@ const NotesModal = ({
           <button
             className="modal-close btn-close-modal"
             onClick={() => setIsNoteModalOpen(false)}
-            disabled={isApiCalling || isAiLoading}
+            disabled={isSavingNote || isAiLoading}
           >
             <X size={18} />
           </button>
         </div>
-        <form onSubmit={handleSaveNotes}>
+        <form onSubmit={onFormSubmit}>
           <div className="modal-body">
             <div className="form-group">
               <div className="notes-header-flex">
@@ -109,30 +182,52 @@ const NotesModal = ({
                   <span>Write Note</span>
                 </label>
 
-                <button
-                  type="button"
-                  className="btn-ai-refine"
-                  onClick={handleAiRefine}
-                  disabled={isAiLoading || isApiCalling || !noteModalData.notes?.trim()}
-                  title="Refine note using AI"
-                >
-                  {isAiLoading ? (
-                    <>
-                      <Loader2 className="spinner" size={14} />
-                      <span>Refining Note...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={14} />
-                      <span>AI Refine</span>
-                    </>
-                  )}
-                </button>
+                <div className="ai-buttons-group" style={{ display: 'flex', gap: '0.4rem' }}>
+                  <button
+                    type="button"
+                    className="btn-ai-refine"
+                    onClick={handleAiComplexity}
+                    disabled={isAiLoading || isSavingNote}
+                    title="Generate Time & Space Complexity using AI"
+                  >
+                    {isAiLoading && aiLoadingType === 'complexity' ? (
+                      <>
+                        <Loader2 className="spinner" size={14} />
+                        <span>Generating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clock size={14} />
+                        <span>Time Complexity</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-ai-refine"
+                    onClick={handleAiRefine}
+                    disabled={isAiLoading || isSavingNote || !noteModalData.notes?.trim()}
+                    title="Refine note using AI"
+                  >
+                    {isAiLoading && aiLoadingType === 'refine' ? (
+                      <>
+                        <Loader2 className="spinner" size={14} />
+                        <span>Refining...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={14} />
+                        <span>AI Refine</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
               <textarea
                 className="notes-textarea"
-                placeholder="Write your note here... (approach, edge cases, formulas, tricks)"
+                placeholder="Write your note here..."
                 value={noteModalData.notes}
                 onChange={(e) => setNoteModalData(prev => ({ ...prev, notes: e.target.value }))}
                 rows={6}
@@ -155,23 +250,23 @@ const NotesModal = ({
               <div className="ai-refined-card">
                 <div className="ai-card-header">
                   <div className="ai-title-badge">
-                    <Sparkles size={16} />
-                    <span>AI Refined Note</span>
+                    {aiMode === 'complexity' ? <Clock size={16} /> : <Sparkles size={16} />}
+                    <span>{aiMode === 'complexity' ? 'AI Time Complexity Analysis' : 'AI Refined Note'}</span>
                   </div>
-                  <span className="ai-model-tag">AI Powered</span>
+                  <span className="ai-model-tag">{aiMode === 'complexity' ? 'Complexity AI' : 'AI Powered'}</span>
                 </div>
 
                 <div className="ai-card-content">
-                  {aiRefinedText}
+                  <ReactMarkdown>{aiRefinedText}</ReactMarkdown>
                 </div>
 
                 <div className="ai-card-actions">
                   <button
                     type="button"
                     className="btn-ai-action btn-ai-redo"
-                    onClick={handleAiRefine}
-                    disabled={isAiLoading}
-                    title="Regenerate refinement with AI"
+                    onClick={aiMode === 'complexity' ? handleAiComplexity : handleAiRefine}
+                    disabled={isAiLoading || isSavingNote}
+                    title="Regenerate with AI"
                   >
                     <RotateCcw size={13} />
                     <span>Redo AI</span>
@@ -179,12 +274,24 @@ const NotesModal = ({
 
                   <button
                     type="button"
+                    className="btn-ai-action btn-ai-add"
+                    onClick={handleAddAiText}
+                    disabled={isSavingNote}
+                    title="Append AI text to original note"
+                  >
+                    <Plus size={14} />
+                    <span>Add</span>
+                  </button>
+
+                  <button
+                    type="button"
                     className="btn-ai-action btn-ai-apply"
                     onClick={handleApplyAiText}
-                    title="Copy AI refined text to textarea"
+                    disabled={isSavingNote}
+                    title="Replace original note with AI text"
                   >
                     <Check size={14} />
-                    <span>Apply AI Text</span>
+                    <span>Replace</span>
                   </button>
                 </div>
               </div>
@@ -196,16 +303,16 @@ const NotesModal = ({
               type="button"
               className="btn btn-secondary"
               onClick={() => setIsNoteModalOpen(false)}
-              disabled={isApiCalling || isAiLoading}
+              disabled={isSavingNote || isAiLoading}
             >
               Cancel
             </button>
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={isApiCalling || isAiLoading}
+              disabled={isSavingNote || isAiLoading}
             >
-              {isApiCalling ? (
+              {isSavingNote ? (
                 <>
                   <Loader2 className="spinner" size={16} />
                   <span>Saving...</span>

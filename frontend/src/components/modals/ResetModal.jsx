@@ -1,13 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertTriangle, Loader2, X } from 'lucide-react';
 
 const ResetModal = ({
   isResetModalOpen,
   setIsResetModalOpen,
-  handleResetConfirm,
-  isApiCalling
+  handleResetConfirm
 }) => {
+  const [isResetting, setIsResetting] = useState(false);
+
   if (!isResetModalOpen) return null;
+
+  const onReset = async () => {
+    setIsResetting(true);
+    try {
+      await handleResetConfirm();
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   return (
     <div className="modal-overlay active">
@@ -17,7 +27,7 @@ const ResetModal = ({
             <AlertTriangle className="modal-header-icon text-danger" size={24} />
             <h2>Reset All Progress?</h2>
           </div>
-          <button className="modal-close btn-close-modal" onClick={() => setIsResetModalOpen(false)} disabled={isApiCalling}>
+          <button className="modal-close btn-close-modal" onClick={() => setIsResetModalOpen(false)} disabled={isResetting}>
             <X size={18} />
           </button>
         </div>
@@ -29,9 +39,9 @@ const ResetModal = ({
           </div>
         </div>
         <div className="modal-footer">
-          <button type="button" className="btn btn-secondary" onClick={() => setIsResetModalOpen(false)} disabled={isApiCalling}>Cancel</button>
-          <button type="button" className="btn btn-danger" onClick={handleResetConfirm} disabled={isApiCalling}>
-            {isApiCalling ? (
+          <button type="button" className="btn btn-secondary" onClick={() => setIsResetModalOpen(false)} disabled={isResetting}>Cancel</button>
+          <button type="button" className="btn btn-danger" onClick={onReset} disabled={isResetting}>
+            {isResetting ? (
               <>
                 <Loader2 className="spinner" size={16} />
                 <span>Resetting...</span>

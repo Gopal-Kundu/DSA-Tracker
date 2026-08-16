@@ -9,8 +9,7 @@ const FilterToolbar = ({
   setActiveFolder,
   topicsList,
   setIsAddModalOpen,
-  setIsResetModalOpen,
-  isApiCalling
+  setIsResetModalOpen
 }) => {
   return (
     <>
@@ -37,7 +36,6 @@ const FilterToolbar = ({
                 className={`btn-toggle ${viewMode === 'table' ? 'active' : ''}`}
                 onClick={() => { setViewMode('table'); setActiveFolder(null); }}
                 title="List View"
-                disabled={isApiCalling}
               >
                 <List size={14} />
                 <span>List</span>
@@ -46,7 +44,6 @@ const FilterToolbar = ({
                 className={`btn-toggle ${viewMode === 'folder' ? 'active' : ''}`}
                 onClick={() => { setViewMode('folder'); setActiveFolder(null); }}
                 title="Folder View"
-                disabled={isApiCalling}
               >
                 <Folder size={14} />
                 <span>Folders</span>
@@ -106,7 +103,7 @@ const FilterToolbar = ({
               <option value="status-unsolved">Status (Unsolved First)</option>
             </select>
 
-            <button className="btn btn-primary" onClick={() => setIsAddModalOpen(true)} disabled={isApiCalling}>
+            <button className="btn btn-primary" onClick={() => setIsAddModalOpen(true)}>
               <PlusCircle className="mini-icon" size={16} /> Add Question
             </button>
           </div>

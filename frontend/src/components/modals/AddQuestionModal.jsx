@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Award, Clock, Code, ExternalLink, FolderOpen, Loader2, PlusCircle, X, Youtube } from 'lucide-react';
 
 const AddQuestionModal = ({
@@ -7,10 +7,21 @@ const AddQuestionModal = ({
   addForm,
   setAddForm,
   handleAddSubmit,
-  topicsList,
-  isApiCalling
+  topicsList
 }) => {
+  const [isSaving, setIsSaving] = useState(false);
+
   if (!isAddModalOpen) return null;
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      await handleAddSubmit(e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="modal-overlay active">
@@ -20,11 +31,11 @@ const AddQuestionModal = ({
             <PlusCircle className="modal-header-icon text-accent" size={24} />
             <h2>Add New Question</h2>
           </div>
-          <button className="modal-close btn-close-modal" onClick={() => setIsAddModalOpen(false)} disabled={isApiCalling}>
+          <button className="modal-close btn-close-modal" onClick={() => setIsAddModalOpen(false)} disabled={isSaving}>
             <X size={18} />
           </button>
         </div>
-        <form onSubmit={handleAddSubmit}>
+        <form onSubmit={onSubmit}>
           <div className="modal-body">
             <div className="modal-form-grid">
               <div className="form-group grid-full">
@@ -129,9 +140,9 @@ const AddQuestionModal = ({
             </div>
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={() => setIsAddModalOpen(false)} disabled={isApiCalling}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={isApiCalling}>
-              {isApiCalling ? (
+            <button type="button" className="btn btn-secondary" onClick={() => setIsAddModalOpen(false)} disabled={isSaving}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={isSaving}>
+              {isSaving ? (
                 <>
                   <Loader2 className="spinner" size={16} />
                   <span>Saving...</span>

@@ -1,6 +1,16 @@
-# LeetTracker — MERN Stack Progress Tracker
+# ⚡ DSA Tracker & Revision Sheet (with AI Help)
 
-A high-performance, premium web application built using the MERN stack (MongoDB, Express, React, Node.js) to build custom DSA sheets, track revision progress, and enable lightning-fast lookups. Featuring user authentication, real-time CRUD operations, dynamic stats visualization, and a sleek, developer-centric dark user interface.
+> **Track DSA problems from LeetCode, Codeforces, CodeChef, and GeeksforGeeks, master coding interviews with AI-driven time complexity analysis, and retain solutions using Spaced Repetition.**
+
+---
+
+## 🌟 Overview
+
+**DSA Tracker** is a modern, high-performance web application designed for software engineers, students, and competitive programmers preparing for technical coding interviews.
+
+Unlike static spreadsheets, DSA Tracker provides an interactive dashboard with **Google Gemini 3.1 AI Integration**, **Spaced Repetition (SRS) tracking**, **Markdown notes**, and **Dual View Modes (List Table & Folder Grid)**.
+
+---
 
 ## 📸 Screenshots
 
@@ -12,75 +22,179 @@ A high-performance, premium web application built using the MERN stack (MongoDB,
 
 ---
 
-## 🚀 System Architecture
+## ✨ Key Features
 
-```
+### 🧠 1. AI-Powered Note Refinement & Time Complexity Analysis
+* **Time Complexity Generator:** Get instant **2-line Time & Space Complexity analysis** (Brute Force vs. Optimized approach, Data Structures used) powered by Google Gemini AI.
+* **AI Note Refinement:** Clean up raw notes, fix grammar, and structure key takeaways without changing your core logic.
+* **One-Click Append ("Add") & Replace:** Seamlessly append AI-generated complexity analysis directly into your existing notes or replace them completely.
+
+### 🔁 2. Spaced Repetition System (SRS)
+* **Revision Counter:** Increment/decrement revision counters for every problem to enforce spaced repetition and eliminate knowledge decay before interview day.
+* **Solving Time Tracking:** Record exact solving duration (in minutes) to measure your algorithmic speed.
+
+### 🌐 3. Multi-Platform Problem Management
+* **Universal Problem Support:** Save, categorize, and track questions from **LeetCode**, **Codeforces**, **CodeChef**, **GeeksforGeeks**, **HackerRank**, and custom sources.
+* **YouTube Explanation Embeds:** Link video solution walkthroughs directly to any question row for 1-click reference.
+
+### 📁 4. Dual Workspace Views
+* **Interactive List Table:** Sleek table view displaying Status (checkbox), Problem Title with direct external links, Topic Badges, Difficulty Tags, Solving Time, SRS Counters, and Note buttons.
+* **Topic Folder Grid:** Visual folder cards grouping problems by topic with real-time completion progress bars and Easy/Medium/Hard difficulty breakdowns.
+
+### 📝 5. Markdown Note Editor & Renderer
+* **Markdown Support:** Write notes using standard Markdown formatting (`# Headings`, `**bold**`, lists, inline `code`, and preformatted code blocks).
+* **React Markdown Rendering:** Dynamic, formatted rendering for both user notes and AI-generated outputs.
+
+### 🔍 6. Smart Filtering & Instant Search
+* **Real-time Client-side Search:** Instant lookup by problem name or topic.
+* **Multi-Filter & Sorting:** Filter by Topic, Difficulty (Easy, Medium, Hard), or Solved Status. Sort by Title, Time Taken, Revision Count, or Difficulty rank.
+
+### 🔒 7. Secure Authentication & User Isolation
+* **Private Account Data:** User data is strictly isolated per account using JWT & HTTP-only cookies.
+* **Safety Reset Modals:** 1-click confirmation modals for safely resetting progress.
+
+---
+
+## 🛠️ Technology Stack
+
+| Domain | Technologies Used |
+| :--- | :--- |
+| **Frontend** | React 18, Vite, Lucide React (Icons), React Markdown, Redux Toolkit |
+| **Backend** | Node.js, Express.js, Mongoose, JSON Web Tokens (JWT), Cookie Parser |
+| **Database** | MongoDB Atlas |
+| **AI Engine** | Google Generative AI (`@google/generative-ai` - Gemini 3.1 Flash / Lite) |
+| **Package Manager** | `pnpm` (or `npm`) |
+
+---
+
+## 📂 Project Structure
+
+```text
 DSA Sheet/
-├── backend/                  # Node.js + Express Backend
+├── backend/
+│   ├── config/               # Database connection (db.js)
+│   ├── controllers/          # Business logic & AI controller (questionController.js, authController.js)
+│   ├── middleware/           # JWT auth middleware (authMiddleware.js)
+│   ├── models/               # MongoDB Schemas (User.js, Question.js)
+│   ├── routes/               # Express API routes (questionRoutes.js, authRoutes.js)
 │   ├── .env.example          # Environment variables template
-│   ├── package.json          # Backend dependencies (express, mongoose, etc.)
-│   └── server.js             # Mongoose schemas, controllers, and Express routes
+│   ├── package.json          # Backend dependencies
+│   └── server.js             # Express app entry point
 │
-└── frontend/                 # Vite + React Frontend
-    ├── public/               # Static assets
-    ├── src/                  # React source files (App.jsx, index.css, main.jsx)
-    ├── index.html            # Web app entry point & Google Fonts loader
-    ├── package.json          # React dependencies (lucide-react, react, etc.)
-    └── vite.config.js        # Vite config with backend proxy setup
+└── frontend/
+    ├── public/               # Static assets & favicon
+    ├── src/
+    │   ├── components/       # UI Components (LandingView, QuestionTable, FolderView, FilterToolbar, Navbar, etc.)
+    │   │   └── modals/       # Modals (NotesModal, AddQuestionModal, EditQuestionModal, ResetModal)
+    │   ├── config.js         # API baseURL configuration
+    │   ├── App.jsx           # Main Application Container & Router
+    │   ├── index.css         # Modern Cyber Obsidian Design System
+    │   └── main.jsx          # React DOM Entrypoint
+    ├── package.json          # Frontend dependencies
+    └── vite.config.js        # Vite configuration & proxy settings
 ```
 
 ---
 
-## 🛠️ Step-by-Step Installation & Setup
+## ⚙️ Environment Configuration
 
-### 1. Database Configuration
-1. Go to the `backend/` directory.
-2. Duplicate `.env.example` and rename the new file to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-3. Open the `.env` file and replace the `MONGODB_URI` placeholder with your actual **MongoDB Mongoose connection string**:
-   ```env
-   PORT=5000
-   MONGODB_URI=your_mongodb_connection_string_here
-   ```
+### Backend Setup (`backend/.env`)
 
-### 2. User-Specific Sheet Initialization
-When a new user registers, they start with a completely empty DSA revision sheet. This allows students and professionals to build, customize, and curate their own personal roadmap entirely from scratch.
+Create a `.env` file inside the `backend/` folder:
+
+```env
+PORT=5000
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/dsatracker?retryWrites=true&w=majority
+JWT_SECRET=your_super_secret_jwt_key_here
+CLIENT_URL=http://localhost:5173
+
+# Google Gemini AI Key (Required for AI Time Complexity & Note Refine)
+GEMINI_API_KEY=your_google_gemini_api_key_here
+GEMINI_MODEL=gemini-3.1-flash-lite
+```
 
 ---
 
-## 🏃 Running the Application
+## 🚀 Getting Started
 
-To run the application, you need to start both the **backend server** and the **frontend dev server**.
+### Prerequisites
+* **Node.js** (v18.0.0 or higher)
+* **pnpm** (recommended) or **npm**
+* **MongoDB** (Local instance or MongoDB Atlas Cluster)
+* **Google Gemini API Key** (Free tier available at [Google AI Studio](https://aistudio.google.com/))
 
-### Start the Backend (Port 5000)
-Navigate to the `backend` directory and start the server:
+---
+
+### Installation & Local Setup
+
+#### 1. Clone the Repository
+```bash
+git clone https://github.com/your-username/dsa-tracker.git
+cd dsa-tracker
+```
+
+#### 2. Install Backend Dependencies
 ```bash
 cd backend
-npm run dev
+pnpm install
 ```
-*Note: This runs the server using `nodemon`, which will automatically reload if you make any changes to the backend files.*
 
-### Start the Frontend (Port 5173)
-Open a new terminal window, navigate to the `frontend` directory, and start the Vite development server:
+#### 3. Install Frontend Dependencies
+```bash
+cd ../frontend
+pnpm install
+```
+
+---
+
+### Running the Application
+
+#### Start the Backend Server (Port 5000)
+```bash
+cd backend
+pnpm run dev
+```
+
+#### Start the Frontend Server (Port 5173)
+Open a new terminal window:
 ```bash
 cd frontend
-npm run dev
+pnpm run dev
 ```
 
-### Accessing the Web Application
-Once both servers are running, open your web browser and navigate to:
+Open your browser and navigate to:
 👉 **[http://localhost:5173](http://localhost:5173)**
 
 ---
 
-## 🎯 Key Features Included
+## 🔌 API Endpoints Summary
 
-- **MongoDB Persistence**: Custom questions, edits, completions, and deletions are saved directly to your MongoDB database.
-- **Dynamic Stats Board**: A circular progress ring calculates your overall completion percentage. Breakdowns for Easy, Medium, and Hard progress bars update reactively.
-- **Interactive Table View**: An elegant LeetCode-style rows view displaying Status (interactive checkbox), Title (direct LeetCode external links), Topic badges, Difficulty levels, and CRUD Actions (Edit, Delete).
-- **Edit Modal**: Instantly modify any question's Title, Topic, Link, or Difficulty. It hooks into the existing topics datalist for auto-completions.
-- **Add Question Modal**: Easily add new questions to customize your study plan.
-- **Filter and Search Suite**: Perform instant client-side searches and filter by Topic, Difficulty, or Done/Undone status.
-- **Vite API Proxying**: The React app uses Vite's proxy server to automatically route `/api/*` requests to the Express backend, resolving CORS issues out-of-the-box.
+### Authentication Routes (`/api/auth`)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Register a new account |
+| `POST` | `/api/auth/login` | Login user & receive HTTP cookie |
+| `POST` | `/api/auth/logout` | Logout user & clear session |
+| `GET` | `/api/auth/me` | Fetch current logged-in user |
+
+### Question Routes (`/api/questions`)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/questions` | Get all questions for logged-in user |
+| `POST` | `/api/questions` | Add a new question |
+| `PUT` | `/api/questions/:id` | Update question details (status, notes, revisions, time) |
+| `DELETE` | `/api/questions/:id` | Delete a question |
+| `POST` | `/api/questions/refine-note` | **AI Endpoint:** Generate 2-line Time Complexity or refine raw notes |
+| `POST` | `/api/questions/reset` | Reset user sheet progress |
+
+---
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](../../issues).
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License**.

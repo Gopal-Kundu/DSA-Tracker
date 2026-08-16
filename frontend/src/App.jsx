@@ -70,10 +70,7 @@ function App() {
   const [authForm, setAuthForm] = useState({ username: '', password: '' });
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
-
-  // API calling state tracker
-  const [activeRequests, setActiveRequests] = useState(0);
-  const isApiCalling = activeRequests > 0;
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Toast Notification State
   const [toasts, setToasts] = useState([]);
@@ -88,15 +85,10 @@ function App() {
 
   // Custom fetch helper that includes credentials (HTTP cookies)
   const customFetch = useCallback(async (url, options = {}) => {
-    setActiveRequests(prev => prev + 1);
-    try {
-      return await fetch(url, {
-        ...options,
-        credentials: 'include'
-      });
-    } finally {
-      setActiveRequests(prev => Math.max(0, prev - 1));
-    }
+    return await fetch(url, {
+      ...options,
+      credentials: 'include'
+    });
   }, []);
 
   // Modal States
@@ -272,6 +264,7 @@ function App() {
   }, [authForm, customFetch, fetchQuestions, showToast]);
 
   const handleLogout = useCallback(async () => {
+    setIsLoggingOut(true);
     try {
       await customFetch(`${baseURL}/api/auth/logout`, { method: 'POST' });
     } catch (err) {
@@ -282,6 +275,7 @@ function App() {
       dispatch(resetQuestionsState());
       setCurrentView('landing');
       setIsMobileMenuOpen(false);
+      setIsLoggingOut(false);
       showToast("Logged out successfully.", "info");
     }
   }, [customFetch, dispatch, showToast]);
@@ -340,7 +334,7 @@ function App() {
 
   // Save Notes handler
   const handleSaveNotes = useCallback(async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!noteModalData.id) return;
 
     try {
@@ -377,7 +371,7 @@ function App() {
 
   // Add Question Submission
   const handleAddSubmit = useCallback(async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!addForm.name.trim() || !addForm.topic.trim() || !addForm.link.trim()) {
       showToast("Please fill in all required fields.", "warning");
       return;
@@ -443,7 +437,7 @@ function App() {
 
   // Edit Question Submission
   const handleEditSubmit = useCallback(async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!editForm.name.trim() || !editForm.topic.trim() || !editForm.link.trim()) {
       showToast("Please fill in all required fields.", "warning");
       return;
@@ -565,7 +559,7 @@ function App() {
         handleLogout={handleLogout}
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
-        isApiCalling={isApiCalling}
+        isLoggingOut={isLoggingOut}
         setAuthError={setAuthError}
         setAuthForm={setAuthForm}
         setIsResetModalOpen={setIsResetModalOpen}
@@ -582,7 +576,7 @@ function App() {
         handleLogout={handleLogout}
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
-        isApiCalling={isApiCalling}
+        isLoggingOut={isLoggingOut}
         setAuthError={setAuthError}
         setAuthForm={setAuthForm}
         setIsResetModalOpen={setIsResetModalOpen}
@@ -600,7 +594,7 @@ function App() {
         ) : (
           <>
             {currentView === 'landing' && (
-              <LandingView setCurrentView={setCurrentView} isApiCalling={isApiCalling} />
+              <LandingView setCurrentView={setCurrentView} />
             )}
 
             {(currentView === 'login' || currentView === 'signup') && (
@@ -613,7 +607,6 @@ function App() {
                 setAuthError={setAuthError}
                 authLoading={authLoading}
                 handleAuthSubmit={handleAuthSubmit}
-                isApiCalling={isApiCalling}
               />
             )}
 
@@ -630,7 +623,6 @@ function App() {
                   setIsAddModalOpen={setIsAddModalOpen}
                   setIsResetModalOpen={setIsResetModalOpen}
                   topicsList={topicsList}
-                  isApiCalling={isApiCalling}
                 />
 
                 {viewMode === 'folder' && !activeFolder ? (
@@ -652,7 +644,6 @@ function App() {
                       handleUpdateRevisions={handleUpdateRevisions}
                       handleEditClick={handleEditClick}
                       handleDeleteClick={handleDeleteClick}
-                      isApiCalling={isApiCalling}
                     />
                     <Pagination onPageChange={(page) => fetchQuestions({ page })} />
                   </>
@@ -671,7 +662,6 @@ function App() {
         setAddForm={setAddForm}
         handleAddSubmit={handleAddSubmit}
         topicsList={topicsList}
-        isApiCalling={isApiCalling}
       />
 
       <EditQuestionModal
@@ -681,7 +671,6 @@ function App() {
         setEditForm={setEditForm}
         handleEditSubmit={handleEditSubmit}
         topicsList={topicsList}
-        isApiCalling={isApiCalling}
       />
 
       <NotesModal
@@ -690,7 +679,6 @@ function App() {
         noteModalData={noteModalData}
         setNoteModalData={setNoteModalData}
         handleSaveNotes={handleSaveNotes}
-        isApiCalling={isApiCalling}
         customFetch={customFetch}
         showToast={showToast}
       />
@@ -700,10 +688,9 @@ function App() {
         isResetModalOpen={isResetModalOpen}
         setIsResetModalOpen={setIsResetModalOpen}
         handleResetConfirm={handleResetConfirm}
-        isApiCalling={isApiCalling}
       />
 
-      <ToastContainer toasts={toasts} setToasts={setToasts} isApiCalling={isApiCalling} />
+      <ToastContainer toasts={toasts} setToasts={setToasts} />
 
       <Footer />
     </div>

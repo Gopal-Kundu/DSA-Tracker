@@ -12,7 +12,7 @@ const Navbar = ({
   handleLogout,
   isMobileMenuOpen,
   setIsMobileMenuOpen,
-  isApiCalling,
+  isLoggingOut,
   setAuthError,
   setAuthForm,
   setIsResetModalOpen
@@ -65,14 +65,13 @@ const Navbar = ({
                   className="btn btn-secondary text-danger-hover"
                   onClick={() => setIsResetModalOpen(true)}
                   title="Reset Sheet Progress"
-                  disabled={isApiCalling}
                   style={{ padding: '0.45rem 0.8rem', fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                 >
                   <RotateCcw size={14} />
                   <span>Reset Progress</span>
                 </button>
-                <button className="btn-logout" onClick={handleLogout} title="Log out from LeetTracker" disabled={isApiCalling}>
-                  {isApiCalling ? (
+                <button className="btn-logout" onClick={handleLogout} title="Log out from LeetTracker" disabled={isLoggingOut}>
+                  {isLoggingOut ? (
                     <>
                       <Loader2 size={14} className="spinner" style={{ marginRight: '0.4rem' }} />
                       <span>Logging out...</span>
@@ -90,14 +89,12 @@ const Navbar = ({
                 <button
                   className="btn btn-secondary"
                   onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('login'); }}
-                  disabled={isApiCalling}
                 >
                   Sign In
                 </button>
                 <button
                   className="btn btn-primary"
                   onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('signup'); }}
-                  disabled={isApiCalling}
                 >
                   Register
                 </button>
@@ -110,7 +107,6 @@ const Navbar = ({
             className="mobile-menu-toggle"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Toggle Menu"
-            disabled={isApiCalling}
           >
             {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>

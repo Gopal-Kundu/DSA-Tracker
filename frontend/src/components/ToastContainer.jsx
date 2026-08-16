@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertCircle, AlertTriangle, Check, Info, X } from 'lucide-react';
 
-const ToastContainer = ({ toasts, setToasts, isApiCalling }) => {
+const ToastContainer = ({ toasts, setToasts }) => {
   return (
     <div className="toasts-container">
       {toasts.map(t => (
@@ -16,7 +16,6 @@ const ToastContainer = ({ toasts, setToasts, isApiCalling }) => {
           <button
             className="toast-close"
             onClick={() => setToasts(prev => prev.filter(item => item.id !== t.id))}
-            disabled={isApiCalling}
             aria-label="Dismiss notification"
           >
             <X size={14} />

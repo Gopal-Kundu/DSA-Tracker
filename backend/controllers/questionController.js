@@ -260,14 +260,10 @@ const bulkAddQuestions = async (req, res) => {
   }
 };
 
-// Refine note text using Google Gemini API
+// Refine note text or analyze Time Complexity using Google Gemini API
 const refineNoteWithAI = async (req, res) => {
   try {
-    const { notes, name, topic } = req.body;
-
-    if (!notes || !notes.trim()) {
-      return res.status(400).json({ error: 'Please write some note text before refining with AI.' });
-    }
+    const { notes, name, topic, mode } = req.body;
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -276,9 +272,27 @@ const refineNoteWithAI = async (req, res) => {
       });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
+    let prompt = '';
 
-    const prompt = `You are a helpful text refinement assistant.
+    if (mode === 'complexity') {
+      prompt = `You are an expert Data Structures and Algorithms interview mentor.
+Analyze the problem "${name || 'DSA Problem'}" (Topic: ${topic || 'General'}).
+${notes && notes.trim() ? `User Notes Context:\n"""\n${notes.trim()}\n"""` : ''}
+
+Task:
+Mention the time and space complexity, brute force approach, optimized approach, and data structures/methods used in EXACTLY 2 LINES.
+
+Rules:
+1. Line 1 MUST state: "Brute Force: [Approach & Data Structure/Method] | Time: O(...) | Space: O(...)"
+2. Line 2 MUST state: "Optimized: [Approach & Data Structure/Method] | Time: O(...) | Space: O(...)"
+3. Total response MUST be at most 2 lines.
+4. Do NOT output any intro/outro, greetings, or commentary. Return ONLY the 2 lines of concise text.`;
+    } else {
+      if (!notes || !notes.trim()) {
+        return res.status(400).json({ error: 'Please write some note text before refining with AI.' });
+      }
+
+      prompt = `You are a helpful text refinement assistant.
 The user wrote study notes for a DSA problem ("${name || 'DSA Problem'}" - ${topic || 'General'}).
 
 Raw Notes:
@@ -293,10 +307,14 @@ CRITICAL RULES:
 2. Do NOT add new sections, template headers, or fake information that was not in the original note.
 3. Keep the original structure and formatting style intact while making the text clean, readable, and grammatically correct.
 4. Do NOT output any intro/outro or meta commentary (like "Here is the refined note:"). Return ONLY the refined text itself.`;
+    }
 
+    const genAI = new GoogleGenerativeAI(apiKey);
 
     const modelNamesToTry = [
-      process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite',
+      process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
+      'gemini-3.1-flash-lite',
+      'gemini-3.1-flash',
       'gemini-2.0-flash-lite',
       'gemini-1.5-flash',
       'gemini-2.0-flash'
@@ -331,7 +349,7 @@ CRITICAL RULES:
   } catch (error) {
     console.error('AI Refine error:', error);
     return res.status(500).json({
-      error: error.message || 'Failed to refine note with AI'
+      error: error.message || 'Failed to analyze note with AI'
     });
   }
 };

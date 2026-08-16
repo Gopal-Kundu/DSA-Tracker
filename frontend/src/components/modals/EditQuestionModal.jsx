@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Award, Clock, Code, Edit, ExternalLink, FolderOpen, Loader2, X, Youtube } from 'lucide-react';
 
 const EditQuestionModal = ({
@@ -7,10 +7,21 @@ const EditQuestionModal = ({
   editForm,
   setEditForm,
   handleEditSubmit,
-  topicsList,
-  isApiCalling
+  topicsList
 }) => {
+  const [isSaving, setIsSaving] = useState(false);
+
   if (!isEditModalOpen) return null;
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      await handleEditSubmit(e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="modal-overlay active">
@@ -20,11 +31,11 @@ const EditQuestionModal = ({
             <Edit className="modal-header-icon text-accent" size={24} />
             <h2>Edit Question</h2>
           </div>
-          <button className="modal-close btn-close-modal" onClick={() => setIsEditModalOpen(false)} disabled={isApiCalling}>
+          <button className="modal-close btn-close-modal" onClick={() => setIsEditModalOpen(false)} disabled={isSaving}>
             <X size={18} />
           </button>
         </div>
-        <form onSubmit={handleEditSubmit}>
+        <form onSubmit={onSubmit}>
           <div className="modal-body">
             <div className="modal-form-grid">
               <div className="form-group grid-full">
@@ -124,9 +135,9 @@ const EditQuestionModal = ({
             </div>
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={() => setIsEditModalOpen(false)} disabled={isApiCalling}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={isApiCalling}>
-              {isApiCalling ? (
+            <button type="button" className="btn btn-secondary" onClick={() => setIsEditModalOpen(false)} disabled={isSaving}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={isSaving}>
+              {isSaving ? (
                 <>
                   <Loader2 className="spinner" size={16} />
                   <span>Updating...</span>

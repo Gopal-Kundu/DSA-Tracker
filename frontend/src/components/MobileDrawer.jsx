@@ -12,7 +12,7 @@ const MobileDrawer = ({
   handleLogout,
   isMobileMenuOpen,
   setIsMobileMenuOpen,
-  isApiCalling,
+  isLoggingOut,
   setAuthError,
   setAuthForm,
   setIsResetModalOpen
@@ -25,7 +25,7 @@ const MobileDrawer = ({
           <div className="logo-group">
             <h1>LeetTracker</h1>
           </div>
-          <button className="btn-close-drawer" onClick={() => setIsMobileMenuOpen(false)} aria-label="Close menu" disabled={isApiCalling}>
+          <button className="btn-close-drawer" onClick={() => setIsMobileMenuOpen(false)} aria-label="Close menu">
             <X size={20} />
           </button>
         </div>
@@ -65,7 +65,6 @@ const MobileDrawer = ({
                 className="btn btn-secondary text-danger-hover"
                 onClick={() => { setIsResetModalOpen(true); setIsMobileMenuOpen(false); }}
                 style={{ width: '100%', marginTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                disabled={isApiCalling}
               >
                 <RotateCcw size={16} />
                 <span>Reset Progress</span>
@@ -75,9 +74,9 @@ const MobileDrawer = ({
                 className="btn btn-danger btn-logout-drawer"
                 onClick={handleLogout}
                 style={{ width: '100%', marginTop: '1rem' }}
-                disabled={isApiCalling}
+                disabled={isLoggingOut}
               >
-                {isApiCalling ? (
+                {isLoggingOut ? (
                   <>
                     <Loader2 size={16} className="spinner" style={{ marginRight: '0.5rem' }} />
                     <span>Logging out...</span>
@@ -96,7 +95,6 @@ const MobileDrawer = ({
                 className="btn btn-secondary"
                 style={{ width: '100%' }}
                 onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('login'); setIsMobileMenuOpen(false); }}
-                disabled={isApiCalling}
               >
                 Sign In
               </button>
@@ -104,7 +102,6 @@ const MobileDrawer = ({
                 className="btn btn-primary"
                 style={{ width: '100%' }}
                 onClick={() => { setAuthError(''); setAuthForm({ username: '', password: '' }); setCurrentView('signup'); setIsMobileMenuOpen(false); }}
-                disabled={isApiCalling}
               >
                 Register
               </button>

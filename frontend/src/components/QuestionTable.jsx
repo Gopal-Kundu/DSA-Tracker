@@ -14,8 +14,7 @@ const QuestionTable = ({
   openNotesModal,
   handleUpdateRevisions,
   handleEditClick,
-  handleDeleteClick,
-  isApiCalling
+  handleDeleteClick
 }) => {
   const { loading, initialFetched } = useSelector((state) => state.questions);
   const currentSort = filters?.sort || 'none';
@@ -62,7 +61,7 @@ const QuestionTable = ({
     <div>
       {viewMode === 'folder' && activeFolder && (
         <div className="folder-detail-header">
-          <button className="btn btn-secondary btn-back" onClick={() => setActiveFolder(null)} disabled={isApiCalling}>
+          <button className="btn btn-secondary btn-back" onClick={() => setActiveFolder(null)}>
             <ArrowLeft size={16} /> Back to Folders
           </button>
           <div className="folder-path">
@@ -91,7 +90,6 @@ const QuestionTable = ({
               setFilters({ search: '', topic: 'all', difficulty: 'all', status: 'all', sort: 'none' });
             }}
             style={{ marginTop: '1rem' }}
-            disabled={isApiCalling}
           >
             Clear Filters
           </button>
@@ -154,7 +152,6 @@ const QuestionTable = ({
                 handleUpdateRevisions={handleUpdateRevisions}
                 handleEditClick={handleEditClick}
                 handleDeleteClick={handleDeleteClick}
-                isApiCalling={isApiCalling || loading}
               />
             ))}
           </div>

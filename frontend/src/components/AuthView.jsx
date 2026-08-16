@@ -9,8 +9,7 @@ const AuthView = ({
   authError,
   setAuthError,
   authLoading,
-  handleAuthSubmit,
-  isApiCalling
+  handleAuthSubmit
 }) => {
   return (
     <div className="auth-container">
@@ -59,8 +58,8 @@ const AuthView = ({
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem' }} disabled={authLoading || isApiCalling}>
-            {authLoading || isApiCalling ? (
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem' }} disabled={authLoading}>
+            {authLoading ? (
               <>
                 <Loader2 size={16} className="spinner" />
                 <span>{currentView === 'login' ? 'Logging in...' : 'Creating account...'}</span>

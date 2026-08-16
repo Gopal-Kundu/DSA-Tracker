@@ -7,15 +7,14 @@ const QuestionRow = ({
   openNotesModal,
   handleUpdateRevisions,
   handleEditClick,
-  handleDeleteClick,
-  isApiCalling
+  handleDeleteClick
 }) => {
   const qId = q._id || q.id;
 
   return (
     <div className={`question-row difficulty-${q.difficulty.toLowerCase()} ${q.done ? 'solved' : ''}`}>
       <div className="col-status">
-        <button className="btn-done-toggle" onClick={() => toggleQuestionStatus(qId)} disabled={isApiCalling}>
+        <button className="btn-done-toggle" onClick={() => toggleQuestionStatus(qId)}>
           <Check size={12} strokeWidth={4} />
         </button>
       </div>
@@ -43,7 +42,6 @@ const QuestionRow = ({
             className={`btn-icon-note ${q.notes ? 'has-notes' : ''}`}
             onClick={() => openNotesModal(q)}
             title={q.notes ? "View / Edit Note" : "Write Note"}
-            disabled={isApiCalling}
           >
             <FileText size={16} />
             {q.notes && <span className="notes-indicator-dot"></span>}
@@ -77,7 +75,7 @@ const QuestionRow = ({
             <button
               className="btn-counter btn-counter-minus"
               onClick={() => handleUpdateRevisions(qId, (q.revisions || 0) - 1)}
-              disabled={((q.revisions || 0) <= 0) || isApiCalling}
+              disabled={(q.revisions || 0) <= 0}
               title="Decrement revisions"
             >
               -
@@ -87,7 +85,6 @@ const QuestionRow = ({
               className="btn-counter btn-counter-plus"
               onClick={() => handleUpdateRevisions(qId, (q.revisions || 0) + 1)}
               title="Increment revisions"
-              disabled={isApiCalling}
             >
               +
             </button>
@@ -96,10 +93,10 @@ const QuestionRow = ({
       </div>
 
       <div className="col-action">
-        <button className="btn-edit" title="Edit this question" onClick={() => handleEditClick(q)} disabled={isApiCalling}>
+        <button className="btn-edit" title="Edit this question" onClick={() => handleEditClick(q)}>
           <Edit size={16} />
         </button>
-        <button className="btn-delete" title="Delete this question" onClick={() => handleDeleteClick(q)} disabled={isApiCalling}>
+        <button className="btn-delete" title="Delete this question" onClick={() => handleDeleteClick(q)}>
           <Trash2 size={16} />
         </button>
       </div>
