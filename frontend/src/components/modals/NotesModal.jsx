@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, FileText, X, Sparkles, Loader2, RotateCcw, Check, Clock, Plus } from 'lucide-react';
+import { Edit, FileText, X, Sparkles, Loader2, RotateCcw, Check, Clock, Plus, Eye } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { baseURL } from '../../config';
 
@@ -19,6 +19,7 @@ const NotesModal = ({
   const [aiMode, setAiMode] = useState('refine'); // 'refine' | 'complexity'
   const [showAiPreview, setShowAiPreview] = useState(false);
   const [aiError, setAiError] = useState('');
+  const [activeTab, setActiveTab] = useState('write'); // 'write' | 'preview'
 
   // Reset AI states when modal opens/closes
   useEffect(() => {
@@ -30,6 +31,7 @@ const NotesModal = ({
       setAiLoadingType(null);
       setIsSavingNote(false);
       setAiMode('refine');
+      setActiveTab('write');
     }
   }, [isNoteModalOpen]);
 
@@ -177,10 +179,24 @@ const NotesModal = ({
           <div className="modal-body">
             <div className="form-group">
               <div className="notes-header-flex">
-                <label className="form-label-with-icon">
-                  <Edit size={14} />
-                  <span>Write Note</span>
-                </label>
+                <div className="notes-mode-tabs">
+                  <button
+                    type="button"
+                    className={`notes-tab-btn ${activeTab === 'write' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('write')}
+                  >
+                    <Edit size={13} />
+                    <span>Write</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`notes-tab-btn ${activeTab === 'preview' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('preview')}
+                  >
+                    <Eye size={13} />
+                    <span>Preview</span>
+                  </button>
+                </div>
 
                 <div className="ai-buttons-group" style={{ display: 'flex', gap: '0.4rem' }}>
                   <button
@@ -225,14 +241,26 @@ const NotesModal = ({
                 </div>
               </div>
 
-              <textarea
-                className="notes-textarea"
-                placeholder="Write your note here..."
-                value={noteModalData.notes}
-                onChange={(e) => setNoteModalData(prev => ({ ...prev, notes: e.target.value }))}
-                rows={6}
-                autoFocus
-              />
+              {activeTab === 'write' ? (
+                <textarea
+                  className="notes-textarea"
+                  placeholder="Write your note here... (Markdown supported)"
+                  value={noteModalData.notes || ''}
+                  onChange={(e) => setNoteModalData(prev => ({ ...prev, notes: e.target.value }))}
+                  rows={6}
+                  autoFocus
+                />
+              ) : (
+                <div className="notes-markdown-preview">
+                  {noteModalData.notes && noteModalData.notes.trim() ? (
+                    <ReactMarkdown>{noteModalData.notes}</ReactMarkdown>
+                  ) : (
+                    <p style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                      No note content to preview yet. Switch to "Write" tab to add notes.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* AI Error Display */}
